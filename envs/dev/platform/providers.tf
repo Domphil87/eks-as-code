@@ -1,19 +1,23 @@
 locals {
   cluster = data.terraform_remote_state.cluster.outputs
+
+  # Also passed to modules for resources that controllers create (ALBs),
+  # which provider default tags do not reach.
+  default_tags = {
+    Project     = var.project
+    Environment = var.environment
+    Owner       = var.owner
+    CostCenter  = var.cost_center
+    ManagedBy   = "terraform"
+    Layer       = "platform"
+  }
 }
 
 provider "aws" {
   region = var.aws_region
 
   default_tags {
-    tags = {
-      Project     = var.project
-      Environment = var.environment
-      Owner       = var.owner
-      CostCenter  = var.cost_center
-      ManagedBy   = "terraform"
-      Layer       = "platform"
-    }
+    tags = local.default_tags
   }
 }
 

@@ -37,6 +37,8 @@ module "gitops" {
   repo_url        = var.gitops_repo_url
   target_revision = var.gitops_target_revision
 
+  tags = local.default_tags
+
   # Argo CD needs the Load Balancer Controller (Ingress) and ExternalDNS
   # (DNS record) running, which the addons module installs.
   depends_on = [module.addons]

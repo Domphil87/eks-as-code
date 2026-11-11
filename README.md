@@ -9,7 +9,8 @@ are pinned Helm releases, and application teams deploy through Git (GitOps).
 > deployed in dev: storage, metrics-server, ingress/DNS/TLS, secrets,
 > monitoring, logging and Cluster Autoscaler. Acceptance tests #8, #9, #10
 > and #12 pass. Milestone 5 (GitOps with Argo CD) is in progress: the code
-> is on GitHub (5a), and Argo CD (5b) is written but not yet deployed.
+> is on GitHub (5a) and Argo CD (5b) is deployed and syncing from it.
+> Next: team namespaces (5c).
 > See [docs/project-plan.md](docs/project-plan.md) for progress.
 
 ## Deployment status
@@ -25,7 +26,7 @@ are pinned Helm releases, and application teams deploy through Git (GitOps).
 | Platform add-ons (dev): 4d monitoring + logging | ✅ | ✅ 2026-11-09, acceptance tests #9 and #10 passed |
 | Platform add-ons (dev): 4e Cluster Autoscaler | ✅ | ✅ 2026-11-09, acceptance test #12 passed |
 | GitOps 5a: code published to GitHub | ✅ | n/a (pushed 2026-11-10) |
-| GitOps 5b: Argo CD, root App of Apps | ✅ | ⬜ |
+| GitOps 5b: Argo CD, root App of Apps | ✅ | ✅ 2026-11-10, `https://argocd.dev.domphil.org` (admin IP only), ALB about $0.025/hour |
 | GitOps 5c/5d: team namespaces, sample app | ⬜ | ⬜ |
 | CI/CD pipeline | ⬜ | ⬜ |
 | Staging | ⬜ | ⬜ |
@@ -346,7 +347,7 @@ and watch `kubectl get nodes` return to the minimum.
 
 ## Milestone 5b: Argo CD (dev platform layer)
 
-**Status: in code, not yet deployed.**
+**Status: deployed 2026-11-10 and verified.**
 
 | Component | How | Exposure |
 |---|---|---|
@@ -368,6 +369,28 @@ terraform output -raw argocd_admin_password_command   # run the printed command
 kubectl -n argocd get applications                    # root: Synced, Healthy
 kubectl -n argocd get configmap gitops-smoke-test     # created by Argo CD from Git
 ```
+
+**Verification (2026-11-10):**
+
+| Check | Result |
+|---|---|
+| Argo CD pods | 5/5 Running; root Application `Synced` / `Healthy` |
+| GitOps loop | `gitops-smoke-test` ConfigMap created from Git |
+| Self-heal | Manual edit of the ConfigMap reverted to the Git value within seconds |
+| DNS | ExternalDNS created `argocd.dev.domphil.org` (A/AAAA alias) and its TXT ownership records |
+| HTTPS | 200; HTTP → 301 to HTTPS; certificate `*.dev.domphil.org` (Amazon); TLS 1.3 negotiated, TLS 1.1 refused |
+| Login | Correct admin password 200, wrong password 401 |
+| Source IP limit | ALB security group allows only the admin /32 on 80/443; a request from the cluster's NAT IP timed out |
+| ALB tags | Project, Environment, Owner, CostCenter, ManagedBy, Layer |
+| Terraform drift | None (`plan -detailed-exitcode` = 0) |
+
+**Fix found during 5b:** ExternalDNS (from 4b) had never written a
+record. Its domain filter (`dev.domphil.org`) also selects hosted zones by
+suffix, and the zone is `domphil.org`, so no zone matched; the log only said
+"All records are already up to date". Adding `--aws-zone-match-parent`
+fixed it. The gitops module also takes its ALB tags as a plain input
+(not a data source), so add-on changes don't make Argo CD show a
+spurious update in plans.
 
 ## Cost management
 

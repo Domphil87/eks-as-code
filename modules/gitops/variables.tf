@@ -51,7 +51,7 @@ variable "apps_path" {
 }
 
 variable "tags" {
-  description = "Extra tags for the ALB, added to the provider default tags (the ALB is created by the Load Balancer Controller, not Terraform)."
+  description = "Tags for the ALB. Pass the provider default tags: the ALB is created by the Load Balancer Controller, not Terraform. A plain value (not a data source) so the plan stays exact while the addons module has pending changes."
   type        = map(string)
   default     = {}
 }

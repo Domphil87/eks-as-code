@@ -3,12 +3,9 @@
 # once; from then on Argo CD deploys whatever is in Git under
 # var.apps_path (team namespaces, applications).
 # ---------------------------------------------------------------
-data "aws_default_tags" "current" {}
-
 locals {
   argocd_namespace = "argocd"
   root_app_name    = "root"
-  alb_tags         = merge(data.aws_default_tags.current.tags, var.tags)
 }
 
 resource "kubernetes_namespace_v1" "argocd" {
@@ -74,7 +71,7 @@ resource "helm_release" "argocd" {
 
           # The controller creates the ALB, so provider default tags do
           # not reach it; pass them on explicitly.
-          "alb.ingress.kubernetes.io/tags" = join(",", [for k, v in local.alb_tags : "${k}=${v}"])
+          "alb.ingress.kubernetes.io/tags" = join(",", [for k, v in var.tags : "${k}=${v}"])
         }
       }
     }

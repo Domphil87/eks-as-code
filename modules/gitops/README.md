@@ -35,7 +35,7 @@ ExternalDNS ──> Route 53: <hostname> → ALB
 | `repo_url` | (none) | Git repository (public: no credentials needed) |
 | `target_revision` | `"main"` | Branch the root Application tracks |
 | `apps_path` | `"gitops/apps"` | Folder with child manifests |
-| `tags` | `{}` | Extra ALB tags (provider default tags are always added) |
+| `tags` | `{}` | ALB tags; pass the provider default tags (the controller creates the ALB) |
 
 ## Outputs
 

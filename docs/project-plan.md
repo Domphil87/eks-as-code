@@ -15,7 +15,7 @@ this repository.
 | 4d | Platform: kube-prometheus-stack, Fluent Bit to CloudWatch | ✅ | ✅ 2026-11-09 (acceptance #9, #10 ✅) | CloudWatch ingestion (cents/session), gp3 10 GiB |
 | 4e | Platform: Cluster Autoscaler | ✅ | ✅ 2026-11-09 (acceptance #12 ✅) | Extra nodes while scaling |
 | 5a | Publish the code to GitHub (`Domphil87/eks-as-code`, public) | ✅ | ✅ pushed 2026-11-10 | None |
-| 5b | GitOps: Argo CD (chart 10.11.6 / v3.5.6), ALB at `argocd.dev.domphil.org` (admin IP only), root App of Apps | ✅ | ⬜ | ALB about $0.025/hour |
+| 5b | GitOps: Argo CD (chart 10.11.6 / v3.5.6), ALB at `argocd.dev.domphil.org` (admin IP only), root App of Apps | ✅ | ✅ 2026-11-10 (HTTPS, IP limit, self-heal verified; ExternalDNS zone fix) | ALB about $0.025/hour |
 | 5c | GitOps: team namespaces, RBAC, quotas, Pod Security, Argo CD projects | ⬜ | ⬜ | None |
 | 5d | GitOps: sample app (HTTPS, HPA, EFS), rollback by `git revert` | ⬜ | ⬜ | Shares the 5b ALB |
 | 6 | CI/CD: OIDC plan/apply roles, fmt/validate/TFLint/Checkov/plan, approvals | ⬜ | ⬜ | None |
@@ -60,6 +60,7 @@ clean.
 | Chart versions | LBC 3.6.2, ExternalDNS 1.23.0, cert-manager v1.21.3 (re-checked 2026-11-06), ESO 2.14.0 |
 | Observability | kube-prometheus-stack 93.1.1 (Helm), Alertmanager off in dev; Fluent Bit as EKS community add-on v5.1.5 to a Terraform-owned log group (7 days) |
 | Secrets | Secrets Manager paths `<project>/<env>/...`; ESO read-only per env prefix; values never in state (ephemeral + write-only); dev recovery window 0 |
+| GitOps | Argo CD chart 10.11.6 (v3.5.6) via Terraform; root App of Apps on `gitops/apps` with prune + self-heal; UI at `argocd.dev.domphil.org` behind a shared ALB (IngressGroup `eks-platform-as-code-dev`), admin IP only; public repo, no credentials ([ADR 0002](adr/0002-terraform-vs-argocd.md)) |
 | Local tooling | Smart App Control blocks Chocolatey's terraform/helm shims; `~/.bashrc` puts the real binaries first on PATH |
 
 ## Open items
@@ -72,7 +73,11 @@ clean.
   tag `Project=fixboard`) runs in the same account and region and switched
   the default kubectl context. Use
   `kubectl config use-context arn:aws:eks:us-east-1:<account>:cluster/eks-platform-as-code-dev`
-  before verification commands. Its `fixboard` namespace in the dev
+  before verification commands. That project also set the dev context's
+  default namespace to `fixboard` in `~/.kube/config`, so commands
+  without `-n` fail; reset with
+  `kubectl config set-context --current --namespace=default` after
+  switching. Its `fixboard` namespace in the dev
   cluster was removed on 2026-11-10 (with your approval) so teardown is
   not blocked by an untracked EFS access point.
 - **Spot resilience (from the 2026-11-09 incident).** At the next dev

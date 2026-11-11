@@ -92,7 +92,14 @@ resource "helm_release" "external_dns" {
 
     sources       = ["ingress", "service"]
     domainFilters = [var.dns_subdomain]
-    extraArgs     = ["--zone-id-filter=${data.aws_route53_zone.parent.zone_id}"]
+    extraArgs = [
+      "--zone-id-filter=${data.aws_route53_zone.parent.zone_id}",
+      # The domain filter also selects hosted zones by suffix, and the
+      # parent zone does not end in dns_subdomain. Without this flag no
+      # zone matches and no record is ever written. Names stay limited
+      # to dns_subdomain (domain filter and IAM conditions).
+      "--aws-zone-match-parent",
+    ]
 
     # sync: also deletes records when the Ingress is deleted, but only
     # records this cluster owns (marked by TXT records with this owner ID).

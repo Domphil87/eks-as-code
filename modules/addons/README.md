@@ -99,6 +99,11 @@ Route 53 (existing parent zone, read-only lookup)
   `route53:ChangeResourceRecordSetsNormalizedRecordNames` limits ExternalDNS
   to names under `dns_subdomain` and cert-manager to `_acme-challenge`
   names under it. Neither can change the apex or other subdomains.
+- **ExternalDNS `--aws-zone-match-parent`.** The domain filter
+  (`dns_subdomain`) also selects hosted zones by suffix, and the parent
+  zone does not end in it, so without this flag no zone matches and no
+  record is written (found with the first Ingress in 5b). Record names
+  stay limited to `dns_subdomain`.
 - **Subdomain CAA instead of changing the apex.** Certificate authorities
   use the closest CAA record, so allowing Let's Encrypt at `dns_subdomain`
   leaves the apex policy (Amazon only) unchanged.
