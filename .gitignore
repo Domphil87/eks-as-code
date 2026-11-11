@@ -1,0 +1,68 @@
+# ---------------------------------------------------------------
+# Terraform
+# ---------------------------------------------------------------
+# Provider binaries and module downloads (recreated by `terraform init`)
+**/.terraform/*
+
+# State files: these can contain secrets and must NEVER be committed.
+# Remote state lives in S3; bootstrap's local state is migrated there.
+*.tfstate
+*.tfstate.*
+*.tflock
+
+# Saved plans can contain sensitive values
+*.tfplan
+*.plan
+tfplan*
+
+# Crash logs
+crash.log
+crash.*.log
+
+# CLI override files (personal, per-machine)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Variable files are PRIVATE by default ...
+*.tfvars
+*.tfvars.json
+# ... except templates with placeholder values
+!*.tfvars.example
+# ... and reviewed, non-sensitive environment settings (added from Milestone 2)
+!envs/**/terraform.tfvars
+
+# NOTE: .terraform.lock.hcl is intentionally NOT ignored.
+# It pins exact provider builds and must be committed.
+
+# ---------------------------------------------------------------
+# Kubernetes / cloud credentials
+# ---------------------------------------------------------------
+kubeconfig
+*.kubeconfig
+.kube/
+.aws/
+*.pem
+*.key
+.env
+.env.*
+
+# ---------------------------------------------------------------
+# Tooling output
+# ---------------------------------------------------------------
+results.sarif
+checkov-report*
+tflint-report*
+
+# ---------------------------------------------------------------
+# Editors / OS
+# ---------------------------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

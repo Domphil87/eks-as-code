@@ -1,0 +1,32 @@
+{{- /*
+Two issuers with identical settings:
+  letsencrypt-staging: untrusted test certificates, generous rate limits.
+                       Use it first to check the setup.
+  letsencrypt-prod:    publicly trusted certificates, strict rate limits.
+No account email is set: Let's Encrypt no longer sends expiry emails,
+and cert-manager renews automatically.
+Credentials come from the cert-manager Pod Identity role (ambient).
+*/ -}}
+{{- $issuers := dict
+      "letsencrypt-staging" "https://acme-staging-v02.api.letsencrypt.org/directory"
+      "letsencrypt-prod" "https://acme-v02.api.letsencrypt.org/directory" }}
+{{- range $name, $server := $issuers }}
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ $name }}
+spec:
+  acme:
+    server: {{ $server }}
+    privateKeySecretRef:
+      name: {{ $name }}-account-key
+    solvers:
+      - selector:
+          dnsZones:
+            - {{ required "dnsZone is required" $.Values.dnsZone | quote }}
+        dns01:
+          route53:
+            region: {{ required "region is required" $.Values.region | quote }}
+            hostedZoneID: {{ required "hostedZoneID is required" $.Values.hostedZoneID | quote }}
+{{- end }}

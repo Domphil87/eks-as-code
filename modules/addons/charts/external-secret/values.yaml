@@ -1,0 +1,5 @@
+# Set by Terraform.
+name: ""            # ExternalSecret and Kubernetes Secret name
+storeName: ""       # ClusterSecretStore name
+remoteKey: ""       # Secrets Manager secret name (JSON; every key is copied)
+refreshInterval: 1h

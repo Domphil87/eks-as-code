@@ -1,0 +1,5 @@
+apiVersion: v2
+name: external-secret
+description: One ExternalSecret that copies a Secrets Manager secret into a Kubernetes Secret.
+type: application
+version: 0.1.0

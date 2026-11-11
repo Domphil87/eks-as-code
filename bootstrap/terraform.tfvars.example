@@ -1,0 +1,16 @@
+# Copy this file to terraform.tfvars and fill in real values.
+# terraform.tfvars is git-ignored, so your email stays out of the repository.
+
+aws_region  = "us-east-1"
+project     = "eks-platform-as-code"
+owner       = "<your-github-handle-or-name>"
+cost_center = "<cost-center-label>"
+
+budget_limit_usd    = 5
+budget_alert_emails = ["<you@example.com>"]
+
+# Optional overrides (defaults shown)
+# budget_actual_alert_thresholds         = [50, 80, 100]
+# budget_forecast_alert_threshold        = 100
+# budget_filter_by_project_tag           = true
+# state_noncurrent_version_retention_days = 90

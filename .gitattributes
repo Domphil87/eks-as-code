@@ -1,0 +1,7 @@
+# Store text files with LF line endings so `terraform fmt -check`
+# gives the same result on Windows and on Linux CI runners.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary

@@ -1,0 +1,4 @@
+# Set by Terraform (modules/addons/cert-manager.tf).
+dnsZone: ""
+hostedZoneID: ""
+region: ""
