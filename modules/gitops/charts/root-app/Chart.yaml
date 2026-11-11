@@ -1,0 +1,5 @@
+apiVersion: v2
+name: root-app
+description: Argo CD root Application (App of Apps) pointing at the GitOps folder.
+type: application
+version: 0.1.0

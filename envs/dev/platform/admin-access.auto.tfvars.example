@@ -1,0 +1,5 @@
+# Copy to admin-access.auto.tfvars (git-ignored; loaded automatically).
+# Find your current public IP with:  curl https://checkip.amazonaws.com
+# If your home IP changes, update this and run terraform apply again.
+
+admin_cidrs = ["<your-public-ip>/32"]

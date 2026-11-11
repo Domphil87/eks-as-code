@@ -82,3 +82,23 @@ variable "cluster_autoscaler_scale_down_unneeded_time" {
   description = "Idle time before Cluster Autoscaler removes a node."
   type        = string
 }
+
+variable "argocd_chart_version" {
+  description = "Pinned argo-cd Helm chart version."
+  type        = string
+}
+
+variable "admin_cidrs" {
+  description = "Admin source IPs allowed to reach the ALB (set in the git-ignored admin-access.auto.tfvars)."
+  type        = list(string)
+}
+
+variable "gitops_repo_url" {
+  description = "Git repository Argo CD deploys from."
+  type        = string
+}
+
+variable "gitops_target_revision" {
+  description = "Branch Argo CD tracks."
+  type        = string
+}

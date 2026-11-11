@@ -1,0 +1,5 @@
+# Set by Terraform (modules/gitops/main.tf).
+name: ""
+repoURL: ""
+targetRevision: ""
+path: ""

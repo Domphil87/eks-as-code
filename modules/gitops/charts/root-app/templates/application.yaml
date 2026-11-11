@@ -1,0 +1,28 @@
+{{- /*
+The finalizer makes deleting this Application also delete everything
+it deployed (child Applications and their resources, including
+Ingresses and so ALBs). Delete it first at teardown, while Argo CD is
+still running.
+*/ -}}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ required "name is required" .Values.name }}
+  namespace: {{ .Release.Namespace }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: {{ required "repoURL is required" .Values.repoURL | quote }}
+    targetRevision: {{ required "targetRevision is required" .Values.targetRevision | quote }}
+    path: {{ required "path is required" .Values.path | quote }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Release.Namespace }}
+  syncPolicy:
+    # Git is the source of truth: apply new commits, delete what was
+    # removed from Git and undo manual changes in the cluster.
+    automated:
+      prune: true
+      selfHeal: true

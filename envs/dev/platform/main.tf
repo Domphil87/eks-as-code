@@ -24,3 +24,20 @@ module "addons" {
   cluster_autoscaler_version                  = var.cluster_autoscaler_version
   cluster_autoscaler_scale_down_unneeded_time = var.cluster_autoscaler_scale_down_unneeded_time
 }
+
+module "gitops" {
+  source = "../../../modules/gitops"
+
+  argocd_chart_version = var.argocd_chart_version
+  hostname             = "argocd.${var.dns_subdomain}"
+  acm_certificate_arn  = module.addons.acm_certificate_arn
+  allowed_cidrs        = var.admin_cidrs
+  alb_group_name       = "${var.project}-${var.environment}"
+
+  repo_url        = var.gitops_repo_url
+  target_revision = var.gitops_target_revision
+
+  # Argo CD needs the Load Balancer Controller (Ingress) and ExternalDNS
+  # (DNS record) running, which the addons module installs.
+  depends_on = [module.addons]
+}

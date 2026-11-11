@@ -1,0 +1,10 @@
+# Proves the GitOps loop: Argo CD creates this ConfigMap from Git.
+# Change `message`, push, and the cluster follows within ~3 minutes.
+# Replaced by real child Applications from Milestone 5c.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitops-smoke-test
+  namespace: argocd
+data:
+  message: "Deployed by Argo CD from Git"

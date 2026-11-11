@@ -8,7 +8,8 @@ are pinned Helm releases, and application teams deploy through Git (GitOps).
 > **Status: Milestone 4 complete (2026-11-09).** All platform add-ons are
 > deployed in dev: storage, metrics-server, ingress/DNS/TLS, secrets,
 > monitoring, logging and Cluster Autoscaler. Acceptance tests #8, #9, #10
-> and #12 pass. Milestone 5 (GitOps with Argo CD) is next.
+> and #12 pass. Milestone 5 (GitOps with Argo CD) is in progress: the code
+> is on GitHub (5a), and Argo CD (5b) is written but not yet deployed.
 > See [docs/project-plan.md](docs/project-plan.md) for progress.
 
 ## Deployment status
@@ -23,7 +24,9 @@ are pinned Helm releases, and application teams deploy through Git (GitOps).
 | Platform add-ons (dev): 4c secrets | ✅ | ✅ 2026-11-09, acceptance test #8 passed |
 | Platform add-ons (dev): 4d monitoring + logging | ✅ | ✅ 2026-11-09, acceptance tests #9 and #10 passed |
 | Platform add-ons (dev): 4e Cluster Autoscaler | ✅ | ✅ 2026-11-09, acceptance test #12 passed |
-| GitOps / Argo CD | ⬜ | ⬜ |
+| GitOps 5a: code published to GitHub | ✅ | n/a (pushed 2026-11-10) |
+| GitOps 5b: Argo CD, root App of Apps | ✅ | ⬜ |
+| GitOps 5c/5d: team namespaces, sample app | ⬜ | ⬜ |
 | CI/CD pipeline | ⬜ | ⬜ |
 | Staging | ⬜ | ⬜ |
 
@@ -61,11 +64,11 @@ Terraform state is split into three layers per environment:
 ```text
 eks-platform-as-code/
 ├── bootstrap/            # ✅ One-time: state bucket and budget (local state at first)
-├── modules/              # Reusable modules: network ✅, eks, addons, gitops ⬜
-├── envs/                 # Root configs per environment and layer (dev/network ✅)
-│   ├── dev/{network,cluster,platform}/
-│   └── staging/{network,cluster,platform}/
-├── gitops/               # ⬜ Argo CD root app, child apps, team configs
+├── modules/              # Reusable modules: network ✅, eks ✅, addons ✅, gitops ✅
+├── envs/                 # Root configs per environment and layer
+│   ├── dev/{network,cluster,platform}/   ✅
+│   └── staging/{network,cluster,platform}/   ⬜
+├── gitops/               # Deployed by Argo CD: apps/ ✅ (5b), teams and apps ⬜
 ├── .github/workflows/    # ⬜ CI/CD
 ├── docs/
 │   ├── project-plan.md   # ✅ Milestones and decisions
@@ -341,6 +344,31 @@ To repeat it: apply a Deployment whose CPU requests exceed free capacity,
 watch `kubectl get events -n <ns>` for `TriggeredScaleUp`, then delete it
 and watch `kubectl get nodes` return to the minimum.
 
+## Milestone 5b: Argo CD (dev platform layer)
+
+**Status: in code, not yet deployed.**
+
+| Component | How | Exposure |
+|---|---|---|
+| Argo CD v3.5.6 | Helm chart 10.11.6 (`argocd`), Terraform `modules/gitops` | `https://argocd.dev.domphil.org` via ALB, ACM wildcard, **admin IP only** |
+| Root Application ("App of Apps") | Local chart, automated sync with prune + self-heal | Watches `gitops/apps` on `main` of this (public) repo, no credentials |
+
+Terraform owns the platform and Argo CD; Argo CD owns everything under
+`gitops/` ([ADR 0002](docs/adr/0002-terraform-vs-argocd.md)). Your admin IP
+goes in the git-ignored `envs/dev/platform/admin-access.auto.tfvars`
+(template: `admin-access.auto.tfvars.example`). The ALB is in the
+IngressGroup `eks-platform-as-code-dev`, which the sample app (5d) will
+share: about $0.025/hour while it exists.
+
+Log in (user `admin`):
+
+```bash
+terraform output -raw argocd_admin_password_command   # run the printed command
+# then open https://argocd.dev.domphil.org
+kubectl -n argocd get applications                    # root: Synced, Healthy
+kubectl -n argocd get configmap gitops-smoke-test     # created by Argo CD from Git
+```
+
 ## Cost management
 
 - An **AWS Budget alerts you; it does not cap spending.** Resources keep
@@ -367,8 +395,11 @@ Reverse of creation: GitOps apps → platform → cluster → network → bootst
 **Current end-of-day teardown (platform + cluster + network; bootstrap stays):**
 
 ```powershell
+# From 5b: remove everything Argo CD deployed first (its finalizer deletes
+# the apps, their Ingresses and ALBs) while the controllers still run.
+kubectl -n argocd delete application root --wait=true
 kubectl get pvc -A                            # must be empty: PVC volumes are not in Terraform state
-kubectl get ingress -A                        # must be empty, then wait until no ALB is left:
+kubectl get ingress -A                        # only argocd/argocd-server (removed by the platform destroy); after the destroy, check no ALB is left:
 aws elbv2 describe-load-balancers --query "LoadBalancers[].LoadBalancerName"
 cd C:\Users\domin\eks-platform-as-code\envs\dev\platform
 terraform plan -destroy -out=destroy.tfplan   # review: only add-ons, roles, StorageClasses

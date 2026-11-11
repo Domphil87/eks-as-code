@@ -51,3 +51,9 @@ container_log_retention_days = 7  # CloudWatch Logs
 # chart defaults to 1.37). Dev removes idle nodes after 5 minutes.
 cluster_autoscaler_version                  = "v1.36.2"
 cluster_autoscaler_scale_down_unneeded_time = "5m"
+
+# Milestone 5b: Argo CD. Chart 10.11.6 = Argo CD v3.5.6 (released
+# 2026-10-26; Argo CD 3.5 is tested on Kubernetes 1.33-1.36).
+argocd_chart_version   = "10.11.6"
+gitops_repo_url        = "https://github.com/Domphil87/eks-as-code.git"
+gitops_target_revision = "main"

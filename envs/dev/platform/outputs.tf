@@ -72,3 +72,13 @@ output "efs_storage_class" {
   description = "EFS StorageClass name."
   value       = module.addons.efs_storage_class
 }
+
+output "argocd_url" {
+  description = "Argo CD UI (reachable only from admin_cidrs)."
+  value       = module.gitops.argocd_url
+}
+
+output "argocd_admin_password_command" {
+  description = "Prints the generated initial admin password (user: admin)."
+  value       = "kubectl -n ${module.gitops.argocd_namespace} get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
+}

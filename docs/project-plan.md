@@ -14,7 +14,10 @@ this repository.
 | 4c | Platform: External Secrets Operator and Secrets Manager | ✅ | ✅ 2026-11-09 (acceptance #8 ✅) | $0.40/secret/month (prorated) |
 | 4d | Platform: kube-prometheus-stack, Fluent Bit to CloudWatch | ✅ | ✅ 2026-11-09 (acceptance #9, #10 ✅) | CloudWatch ingestion (cents/session), gp3 10 GiB |
 | 4e | Platform: Cluster Autoscaler | ✅ | ✅ 2026-11-09 (acceptance #12 ✅) | Extra nodes while scaling |
-| 5 | GitOps: Argo CD, App of Apps, team namespaces, RBAC, quotas, PSS, sample app | ⬜ | ⬜ | Small |
+| 5a | Publish the code to GitHub (`Domphil87/eks-as-code`, public) | ✅ | ✅ pushed 2026-11-10 | None |
+| 5b | GitOps: Argo CD (chart 10.11.6 / v3.5.6), ALB at `argocd.dev.domphil.org` (admin IP only), root App of Apps | ✅ | ⬜ | ALB about $0.025/hour |
+| 5c | GitOps: team namespaces, RBAC, quotas, Pod Security, Argo CD projects | ⬜ | ⬜ | None |
+| 5d | GitOps: sample app (HTTPS, HPA, EFS), rollback by `git revert` | ⬜ | ⬜ | Shares the 5b ALB |
 | 6 | CI/CD: OIDC plan/apply roles, fmt/validate/TFLint/Checkov/plan, approvals | ⬜ | ⬜ | None |
 | 7 | Staging from the same modules | ⬜ | ⬜ | Yes (temporary) |
 | 8 | Run the 16 acceptance tests and record the evidence | ⬜ | ⬜ | Yes (temporary) |
@@ -61,7 +64,17 @@ clean.
 
 ## Open items
 
-- Confirm the GitHub repo `Domphil87/eks-as-code` exists and is empty before `git init`/push.
+- ~~Confirm the GitHub repo~~: `Domphil87/eks-as-code` is public and held
+  only an initial README commit; our code was committed on top of it
+  (2026-11-10, no force-push). Kept public: Argo CD reads it without
+  credentials; the account ID (in the state bucket name) is not a secret.
+- **Shared AWS account.** Another project (`ridgeline-fixboard` cluster,
+  tag `Project=fixboard`) runs in the same account and region and switched
+  the default kubectl context. Use
+  `kubectl config use-context arn:aws:eks:us-east-1:<account>:cluster/eks-platform-as-code-dev`
+  before verification commands. Its `fixboard` namespace in the dev
+  cluster was removed on 2026-11-10 (with your approval) so teardown is
+  not blocked by an untracked EFS access point.
 - **Spot resilience (from the 2026-11-09 incident).** At the next dev
   rebuild (when replacing the node group is free), add more 2 vCPU / 8 GiB
   types (for example `m6a.large`, `m7i.large`, `m7a.large`,
