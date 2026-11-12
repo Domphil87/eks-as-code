@@ -16,6 +16,12 @@ resources:
   - hpa.yaml
   - pdb.yaml
   - pvc.yaml
+# PruneLast: Argo CD deletes the previous ConfigMap only after the rollout
+# is healthy. Without it, old pods still starting or restarting during a
+# release or rollback fail with "configmap not found" (seen in 5d).
+generatorOptions:
+  annotations:
+    argocd.argoproj.io/sync-options: PruneLast=true
 configMapGenerator:
   - name: hello-content
     files:
