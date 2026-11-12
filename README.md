@@ -27,7 +27,7 @@ are pinned Helm releases, and application teams deploy through Git (GitOps).
 | Platform add-ons (dev): 4e Cluster Autoscaler | ✅ | ✅ 2026-11-09, acceptance test #12 passed |
 | GitOps 5a: code published to GitHub | ✅ | n/a (pushed 2026-11-10) |
 | GitOps 5b: Argo CD, root App of Apps | ✅ | ✅ 2026-11-10, `https://argocd.dev.domphil.org` (admin IP only), ALB about $0.025/hour |
-| GitOps 5c: team namespaces, RBAC, quotas, Argo CD projects | ✅ | ⬜ (deploys on push) |
+| GitOps 5c: team namespaces, RBAC, quotas, Argo CD projects | ✅ | ✅ 2026-11-11, isolation verified |
 | GitOps 5d: sample app | ⬜ | ⬜ |
 | CI/CD pipeline | ⬜ | ⬜ |
 | Staging | ⬜ | ⬜ |
@@ -397,7 +397,7 @@ spurious update in plans.
 
 ## Milestone 5c: team namespaces (GitOps)
 
-**Status: code ready; deploys when pushed to `main`.**
+**Status: deployed 2026-11-11 and verified.**
 
 The root Application now syncs a child Application, `teams`, which
 deploys `gitops/teams/<team>/` for **team-a** and **team-b**: a
@@ -406,6 +406,19 @@ a RoleBinding that gives the group `<team>-developers` `edit` in that
 namespace only, and an Argo CD AppProject that limits the team's
 applications to this repo and its own namespace. Details:
 [gitops/README.md](gitops/README.md).
+
+**Verification (2026-11-11):** Argo CD created everything within seconds
+of the push (`root` and `teams` both `Synced` / `Healthy`) and pruned the
+5b smoke-test ConfigMap.
+
+| Check | Result |
+|---|---|
+| RBAC (as `team-a-developers`) | Can create Deployments in team-a; cannot read or write team-b, create RoleBindings, change quota or LimitRange, create namespaces or read kube-system Secrets |
+| Pod Security | Privileged pod rejected (`violates PodSecurity "restricted:latest"`); compliant pod admitted |
+| LimitRange | Pod without resources got the defaults (50m / 64 Mi request, 250m / 256 Mi limit); a container with a 3-CPU limit was rejected (max 1) |
+| Quota | Deployment of 3 × 1 CPU stopped at 1/3 replicas (`exceeded quota: requests.cpu`); LoadBalancer Service rejected |
+| Argo CD project | Application in project `team-a` targeting namespace team-b refused (`InvalidSpecError`: destination not allowed) |
+| Self-heal | Deleted team-b RoleBinding was recreated by Argo CD within seconds |
 
 ## Cost management
 

@@ -16,7 +16,7 @@ this repository.
 | 4e | Platform: Cluster Autoscaler | ✅ | ✅ 2026-11-09 (acceptance #12 ✅) | Extra nodes while scaling |
 | 5a | Publish the code to GitHub (`Domphil87/eks-as-code`, public) | ✅ | ✅ pushed 2026-11-10 | None |
 | 5b | GitOps: Argo CD (chart 10.11.6 / v3.5.6), ALB at `argocd.dev.domphil.org` (admin IP only), root App of Apps | ✅ | ✅ 2026-11-10 (HTTPS, IP limit, self-heal verified; ExternalDNS zone fix) | ALB about $0.025/hour |
-| 5c | GitOps: team namespaces (team-a, team-b), RBAC, quotas, Pod Security, Argo CD projects | ✅ | ⬜ | None |
+| 5c | GitOps: team namespaces (team-a, team-b), RBAC, quotas, Pod Security, Argo CD projects | ✅ | ✅ 2026-11-11 (RBAC, Pod Security, quota, project boundary, self-heal verified) | None |
 | 5d | GitOps: sample app (HTTPS, HPA, EFS), rollback by `git revert` | ⬜ | ⬜ | Shares the 5b ALB |
 | 6 | CI/CD: OIDC plan/apply roles, fmt/validate/TFLint/Checkov/plan, approvals | ⬜ | ⬜ | None |
 | 7 | Staging from the same modules | ⬜ | ⬜ | Yes (temporary) |
