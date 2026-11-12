@@ -7,7 +7,10 @@ Everything in this folder is deployed by **Argo CD**, not Terraform
 ```text
 gitops/
 ├── apps/                  ← watched by the root Application ("App of Apps")
-│   └── teams.yaml            child Application for gitops/teams (5c)
+│   ├── teams.yaml            child Application for gitops/teams (5c)
+│   └── team-a-hello.yaml     team-a's sample app, in the team-a project (5d)
+├── workloads/             ← applications, one folder per team and app (5d)
+│   └── team-a/hello/         Kustomize: Deployment, Service, Ingress, HPA, PDB, EFS PVC
 └── teams/                 ← one folder per team (5c)
     ├── team-a/
     │   ├── namespace.yaml    Pod Security "restricted" (enforce/warn/audit)
@@ -43,3 +46,22 @@ Check the status:
 ```bash
 kubectl -n argocd get applications
 ```
+
+## Releasing and rolling back an app
+
+Example: `workloads/team-a/hello` (live at `https://hello.dev.domphil.org`
+while dev is up).
+
+1. Change the app in Git (for example the text in `index.html`), commit, push.
+   Argo CD syncs within about three minutes (or click **Refresh**), and the
+   Deployment rolls out with no dropped requests.
+2. To roll back, revert the commit and push:
+
+   ```bash
+   git revert <commit> && git push
+   ```
+
+Apps that join the shared ALB must keep `scheme`, `ssl-redirect` and
+`ssl-policy` identical to the Argo CD Ingress and must not set
+`inbound-cidrs`; a conflict stops the Load Balancer Controller for every
+Ingress in the group.

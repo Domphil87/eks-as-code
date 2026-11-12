@@ -8,9 +8,10 @@ are pinned Helm releases, and application teams deploy through Git (GitOps).
 > **Status: Milestone 4 complete (2026-11-09).** All platform add-ons are
 > deployed in dev: storage, metrics-server, ingress/DNS/TLS, secrets,
 > monitoring, logging and Cluster Autoscaler. Acceptance tests #8, #9, #10
-> and #12 pass. Milestone 5 (GitOps with Argo CD) is in progress: the code
-> is on GitHub (5a) and Argo CD (5b) is deployed and syncing from it.
-> Team namespaces (5c) are in Git; next: the sample app (5d).
+> and #12 pass. **Milestone 5 (GitOps) complete (2026-11-11):** code on
+> GitHub (5a), Argo CD (5b), team namespaces with guardrails (5c) and a
+> team-a sample app at `https://hello.dev.domphil.org` with HPA, EFS and
+> zero-downtime rollback by `git revert` (5d). Next: CI/CD (Milestone 6).
 > See [docs/project-plan.md](docs/project-plan.md) for progress.
 
 ## Deployment status
@@ -28,7 +29,7 @@ are pinned Helm releases, and application teams deploy through Git (GitOps).
 | GitOps 5a: code published to GitHub | ✅ | n/a (pushed 2026-11-10) |
 | GitOps 5b: Argo CD, root App of Apps | ✅ | ✅ 2026-11-10, `https://argocd.dev.domphil.org` (admin IP only), ALB about $0.025/hour |
 | GitOps 5c: team namespaces, RBAC, quotas, Argo CD projects | ✅ | ✅ 2026-11-11, isolation verified |
-| GitOps 5d: sample app | ⬜ | ⬜ |
+| GitOps 5d: team-a sample app (HTTPS, HPA, EFS, rollback) | ✅ | ✅ 2026-11-11, `https://hello.dev.domphil.org`, zero-downtime rollback verified |
 | CI/CD pipeline | ⬜ | ⬜ |
 | Staging | ⬜ | ⬜ |
 
@@ -70,7 +71,7 @@ eks-platform-as-code/
 ├── envs/                 # Root configs per environment and layer
 │   ├── dev/{network,cluster,platform}/   ✅
 │   └── staging/{network,cluster,platform}/   ⬜
-├── gitops/               # Deployed by Argo CD: apps/ ✅ (5b), teams/ ✅ (5c), sample app ⬜
+├── gitops/               # Deployed by Argo CD: apps/ ✅ (5b), teams/ ✅ (5c), workloads/ ✅ (5d)
 ├── .github/workflows/    # ⬜ CI/CD
 ├── docs/
 │   ├── project-plan.md   # ✅ Milestones and decisions
@@ -359,8 +360,8 @@ Terraform owns the platform and Argo CD; Argo CD owns everything under
 `gitops/` ([ADR 0002](docs/adr/0002-terraform-vs-argocd.md)). Your admin IP
 goes in the git-ignored `envs/dev/platform/admin-access.auto.tfvars`
 (template: `admin-access.auto.tfvars.example`). The ALB is in the
-IngressGroup `eks-platform-as-code-dev`, which the sample app (5d) will
-share: about $0.025/hour while it exists.
+IngressGroup `eks-platform-as-code-dev`, which the sample app (5d) also
+uses: about $0.025/hour while it exists.
 
 Log in (user `admin`):
 
@@ -383,7 +384,7 @@ kubectl -n argocd get applications                    # root: Synced, Healthy
 | DNS | ExternalDNS created `argocd.dev.domphil.org` (A/AAAA alias) and its TXT ownership records |
 | HTTPS | 200; HTTP → 301 to HTTPS; certificate `*.dev.domphil.org` (Amazon); TLS 1.3 negotiated, TLS 1.1 refused |
 | Login | Correct admin password 200, wrong password 401 |
-| Source IP limit | ALB security group allows only the admin /32 on 80/443; a request from the cluster's NAT IP timed out |
+| Source IP limit | ALB security group allows only the admin /32 on 80/443; a request from the cluster's NAT IP timed out. **Changed in 5d:** the ALB is now shared with a public app, so the limit is a source-ip condition on the Argo CD listener rule (other IPs get 404) |
 | ALB tags | Project, Environment, Owner, CostCenter, ManagedBy, Layer |
 | Terraform drift | None (`plan -detailed-exitcode` = 0) |
 
@@ -419,6 +420,53 @@ of the push (`root` and `teams` both `Synced` / `Healthy`) and pruned the
 | Quota | Deployment of 3 × 1 CPU stopped at 1/3 replicas (`exceeded quota: requests.cpu`); LoadBalancer Service rejected |
 | Argo CD project | Application in project `team-a` targeting namespace team-b refused (`InvalidSpecError`: destination not allowed) |
 | Self-heal | Deleted team-b RoleBinding was recreated by Argo CD within seconds |
+
+## Milestone 5d: sample app (GitOps)
+
+**Status: deployed 2026-11-11 and verified.** Live at
+`https://hello.dev.domphil.org` while dev is up.
+
+`hello` is a team-a application, deployed by the Argo CD Application
+`team-a-hello` in the **team-a project**, so it is held to the 5c
+guardrails. Source: [gitops/workloads/team-a/hello/](gitops/workloads/team-a/hello/)
+(Kustomize).
+
+| Part | How |
+|---|---|
+| Web server | `nginx-unprivileged` 1.30.6, non-root, read-only root filesystem (passes Pod Security `restricted`) |
+| HTTPS | Ingress joins the shared ALB (IngressGroup `eks-platform-as-code-dev`); the ACM wildcard is found from the TLS host; ExternalDNS creates the record |
+| Scaling | HorizontalPodAutoscaler 2–6 replicas at 60 % CPU; no `replicas` in Git so Argo CD and the HPA don't fight; PodDisruptionBudget min 1; replicas spread over AZs |
+| Shared storage | EFS PVC (ReadWriteMany); each pod's init container appends to `/shared/pods.log`, served at `/shared/` |
+| Releases | Page content is a Kustomize-generated ConfigMap (name includes a content hash), so a content change rolls the Deployment and `git revert` rolls it back |
+| Zero downtime | ALB pod readiness gates (namespace label from 5c), 15 s `preStop` sleep, 45 s grace period, 30 s deregistration delay; old ConfigMaps pruned last |
+
+**Verification (2026-11-11):**
+
+| Check | Result |
+|---|---|
+| HTTPS | 200 with `*.dev.domphil.org`, TLS 1.3; HTTP → 301 to HTTPS |
+| EFS | Two pods on different nodes both wrote to the same `pods.log` |
+| HPA | Load from 3 generator pods: 2 → 3 → 5 replicas within 30 s; Argo CD stayed `Synced` |
+| Argo CD still admin-only | From the cluster's NAT IP: hello 200, `argocd.dev.domphil.org` 404; from the admin IP: 200 |
+| Release and rollback | Version 2 pushed → live in ~40 s; `git revert` pushed → Version 1 live and fully rolled out in ~40 s, reusing the previous ReplicaSet |
+| Zero downtime | 1,048 requests during a release and rollback: **0 errors** (before the fixes below: 7 of 525 failed) |
+| Terraform drift | None (`plan -detailed-exitcode` = 0) |
+
+**Found and fixed during 5d:**
+
+1. **Shared ALB and source IPs.** The Load Balancer Controller requires
+   `inbound-cidrs` to be identical for every Ingress in a group; the
+   public app's `0.0.0.0/0` conflicted with Argo CD's `/32`, and the
+   controller stopped reconciling the *whole group*. Argo CD now drops
+   `inbound-cidrs` and is limited by a `source-ip` condition on its
+   listener rule (Terraform, `modules/gitops`). The security group is
+   open on 80/443.
+2. **ConfigMap pruned mid-rollout.** Argo CD deleted the previous
+   generated ConfigMap before the rollback finished, so a pod failed to
+   mount it. Fixed with `PruneLast=true` on generated ConfigMaps.
+3. **Requests dropped during rollouts.** Pods stopped before the ALB had
+   deregistered them (7 of 525 requests failed). Fixed with readiness
+   gates, `preStop` and a shorter deregistration delay (0 of 1,048).
 
 ## Cost management
 

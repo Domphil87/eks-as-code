@@ -17,7 +17,7 @@ this repository.
 | 5a | Publish the code to GitHub (`Domphil87/eks-as-code`, public) | ✅ | ✅ pushed 2026-11-10 | None |
 | 5b | GitOps: Argo CD (chart 10.11.6 / v3.5.6), ALB at `argocd.dev.domphil.org` (admin IP only), root App of Apps | ✅ | ✅ 2026-11-10 (HTTPS, IP limit, self-heal verified; ExternalDNS zone fix) | ALB about $0.025/hour |
 | 5c | GitOps: team namespaces (team-a, team-b), RBAC, quotas, Pod Security, Argo CD projects | ✅ | ✅ 2026-11-11 (RBAC, Pod Security, quota, project boundary, self-heal verified) | None |
-| 5d | GitOps: sample app (HTTPS, HPA, EFS), rollback by `git revert` | ⬜ | ⬜ | Shares the 5b ALB |
+| 5d | GitOps: team-a sample app `hello` (HTTPS, HPA, EFS), rollback by `git revert` | ✅ | ✅ 2026-11-11 (0 errors in 1,048 requests across release + rollback) | Shares the 5b ALB; EFS cents |
 | 6 | CI/CD: OIDC plan/apply roles, fmt/validate/TFLint/Checkov/plan, approvals | ⬜ | ⬜ | None |
 | 7 | Staging from the same modules | ⬜ | ⬜ | Yes (temporary) |
 | 8 | Run the 16 acceptance tests and record the evidence | ⬜ | ⬜ | Yes (temporary) |
@@ -60,7 +60,7 @@ clean.
 | Chart versions | LBC 3.6.2, ExternalDNS 1.23.0, cert-manager v1.21.3 (re-checked 2026-11-06), ESO 2.14.0 |
 | Observability | kube-prometheus-stack 93.1.1 (Helm), Alertmanager off in dev; Fluent Bit as EKS community add-on v5.1.5 to a Terraform-owned log group (7 days) |
 | Secrets | Secrets Manager paths `<project>/<env>/...`; ESO read-only per env prefix; values never in state (ephemeral + write-only); dev recovery window 0 |
-| GitOps | Argo CD chart 10.11.6 (v3.5.6) via Terraform; root App of Apps on `gitops/apps` with prune + self-heal; UI at `argocd.dev.domphil.org` behind a shared ALB (IngressGroup `eks-platform-as-code-dev`), admin IP only; public repo, no credentials ([ADR 0002](adr/0002-terraform-vs-argocd.md)) |
+| GitOps | Argo CD chart 10.11.6 (v3.5.6) via Terraform; root App of Apps on `gitops/apps` with prune + self-heal; UI at `argocd.dev.domphil.org` behind a shared ALB (IngressGroup `eks-platform-as-code-dev`), admin IP only via a source-ip listener rule condition (the security group is open because apps share the ALB); public repo, no credentials ([ADR 0002](adr/0002-terraform-vs-argocd.md)) |
 | Local tooling | Smart App Control blocks Chocolatey's terraform/helm shims; `~/.bashrc` puts the real binaries first on PATH |
 
 ## Open items
@@ -96,6 +96,7 @@ clean.
   README's upgrade procedure: control plane, add-ons, node group, then
   `cluster_autoscaler_version` together.
 - **Team access from IAM.** The `team-a-developers` / `team-b-developers` groups (5c) are not mapped to IAM principals yet; add EKS access entries (cluster layer) with `kubernetes_groups` when real team roles exist.
+- **Shared ALB governance.** Any team Ingress can join the IngressGroup `eks-platform-as-code-dev`; a conflicting group-wide setting (`inbound-cidrs`, `ssl-policy`, `scheme`, `ssl-redirect`) stops the controller for every Ingress in the group, Argo CD included (seen in 5d). Before more teams onboard: an `IngressClassParams` that fixes the group and these settings, or a Kyverno/ValidatingAdmissionPolicy check.
 - Install the GitHub CLI before Milestone 6 (Helm 4.1.4 is installed).
 - CI runners are not in the cluster endpoint allow-list; decide how CI reaches the API for the platform layer in Milestone 6.
 - Activate the `Project` cost allocation tag on or after 2026-10-28 (about 24 hours after bootstrap apply).
