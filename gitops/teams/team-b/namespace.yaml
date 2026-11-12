@@ -10,3 +10,6 @@ metadata:
     pod-security.kubernetes.io/enforce-version: latest
     pod-security.kubernetes.io/warn: restricted
     pod-security.kubernetes.io/audit: restricted
+    # New pods count as Ready only once the ALB target group reports them
+    # healthy (Load Balancer Controller webhook), so rollouts wait for it.
+    elbv2.k8s.aws/pod-readiness-gate-inject: enabled
