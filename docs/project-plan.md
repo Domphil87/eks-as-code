@@ -16,7 +16,7 @@ this repository.
 | 4e | Platform: Cluster Autoscaler | ✅ | ✅ 2026-11-09 (acceptance #12 ✅) | Extra nodes while scaling |
 | 5a | Publish the code to GitHub (`Domphil87/eks-as-code`, public) | ✅ | ✅ pushed 2026-11-10 | None |
 | 5b | GitOps: Argo CD (chart 10.11.6 / v3.5.6), ALB at `argocd.dev.domphil.org` (admin IP only), root App of Apps | ✅ | ✅ 2026-11-10 (HTTPS, IP limit, self-heal verified; ExternalDNS zone fix) | ALB about $0.025/hour |
-| 5c | GitOps: team namespaces, RBAC, quotas, Pod Security, Argo CD projects | ⬜ | ⬜ | None |
+| 5c | GitOps: team namespaces (team-a, team-b), RBAC, quotas, Pod Security, Argo CD projects | ✅ | ⬜ | None |
 | 5d | GitOps: sample app (HTTPS, HPA, EFS), rollback by `git revert` | ⬜ | ⬜ | Shares the 5b ALB |
 | 6 | CI/CD: OIDC plan/apply roles, fmt/validate/TFLint/Checkov/plan, approvals | ⬜ | ⬜ | None |
 | 7 | Staging from the same modules | ⬜ | ⬜ | Yes (temporary) |
@@ -95,6 +95,7 @@ clean.
   (the reason for staying on 1.36 is gone). Candidate exercise for the
   README's upgrade procedure: control plane, add-ons, node group, then
   `cluster_autoscaler_version` together.
+- **Team access from IAM.** The `team-a-developers` / `team-b-developers` groups (5c) are not mapped to IAM principals yet; add EKS access entries (cluster layer) with `kubernetes_groups` when real team roles exist.
 - Install the GitHub CLI before Milestone 6 (Helm 4.1.4 is installed).
 - CI runners are not in the cluster endpoint allow-list; decide how CI reaches the API for the platform layer in Milestone 6.
 - Activate the `Project` cost allocation tag on or after 2026-10-28 (about 24 hours after bootstrap apply).

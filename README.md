@@ -10,7 +10,7 @@ are pinned Helm releases, and application teams deploy through Git (GitOps).
 > monitoring, logging and Cluster Autoscaler. Acceptance tests #8, #9, #10
 > and #12 pass. Milestone 5 (GitOps with Argo CD) is in progress: the code
 > is on GitHub (5a) and Argo CD (5b) is deployed and syncing from it.
-> Next: team namespaces (5c).
+> Team namespaces (5c) are in Git; next: the sample app (5d).
 > See [docs/project-plan.md](docs/project-plan.md) for progress.
 
 ## Deployment status
@@ -27,7 +27,8 @@ are pinned Helm releases, and application teams deploy through Git (GitOps).
 | Platform add-ons (dev): 4e Cluster Autoscaler | ✅ | ✅ 2026-11-09, acceptance test #12 passed |
 | GitOps 5a: code published to GitHub | ✅ | n/a (pushed 2026-11-10) |
 | GitOps 5b: Argo CD, root App of Apps | ✅ | ✅ 2026-11-10, `https://argocd.dev.domphil.org` (admin IP only), ALB about $0.025/hour |
-| GitOps 5c/5d: team namespaces, sample app | ⬜ | ⬜ |
+| GitOps 5c: team namespaces, RBAC, quotas, Argo CD projects | ✅ | ⬜ (deploys on push) |
+| GitOps 5d: sample app | ⬜ | ⬜ |
 | CI/CD pipeline | ⬜ | ⬜ |
 | Staging | ⬜ | ⬜ |
 
@@ -69,7 +70,7 @@ eks-platform-as-code/
 ├── envs/                 # Root configs per environment and layer
 │   ├── dev/{network,cluster,platform}/   ✅
 │   └── staging/{network,cluster,platform}/   ⬜
-├── gitops/               # Deployed by Argo CD: apps/ ✅ (5b), teams and apps ⬜
+├── gitops/               # Deployed by Argo CD: apps/ ✅ (5b), teams/ ✅ (5c), sample app ⬜
 ├── .github/workflows/    # ⬜ CI/CD
 ├── docs/
 │   ├── project-plan.md   # ✅ Milestones and decisions
@@ -367,8 +368,10 @@ Log in (user `admin`):
 terraform output -raw argocd_admin_password_command   # run the printed command
 # then open https://argocd.dev.domphil.org
 kubectl -n argocd get applications                    # root: Synced, Healthy
-kubectl -n argocd get configmap gitops-smoke-test     # created by Argo CD from Git
 ```
+
+(The `gitops-smoke-test` ConfigMap used to verify 5b was replaced by the
+`teams` Application in 5c.)
 
 **Verification (2026-11-10):**
 
@@ -391,6 +394,18 @@ suffix, and the zone is `domphil.org`, so no zone matched; the log only said
 fixed it. The gitops module also takes its ALB tags as a plain input
 (not a data source), so add-on changes don't make Argo CD show a
 spurious update in plans.
+
+## Milestone 5c: team namespaces (GitOps)
+
+**Status: code ready; deploys when pushed to `main`.**
+
+The root Application now syncs a child Application, `teams`, which
+deploys `gitops/teams/<team>/` for **team-a** and **team-b**: a
+namespace with Pod Security `restricted`, a ResourceQuota and LimitRange,
+a RoleBinding that gives the group `<team>-developers` `edit` in that
+namespace only, and an Argo CD AppProject that limits the team's
+applications to this repo and its own namespace. Details:
+[gitops/README.md](gitops/README.md).
 
 ## Cost management
 

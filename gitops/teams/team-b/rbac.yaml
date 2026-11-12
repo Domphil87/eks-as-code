@@ -1,0 +1,16 @@
+# Developers get the built-in "edit" role in their own namespace only.
+# "edit" cannot change Roles, RoleBindings, quotas or limits, so the
+# guardrails above stay with the platform team.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-b-developers-edit
+  namespace: team-b
+subjects:
+  - kind: Group
+    name: team-b-developers
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io

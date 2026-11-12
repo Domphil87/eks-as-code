@@ -1,0 +1,12 @@
+# Pod Security "restricted": no privileged pods, no root, no host
+# access, dropped capabilities, seccomp RuntimeDefault.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-a
+  labels:
+    team: team-a
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

@@ -1,0 +1,29 @@
+# Argo CD project for the team's applications (Milestone 5d): only this
+# repository, only the team's namespace, no cluster-scoped objects and
+# no objects that would loosen the guardrails.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: team-b
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Applications owned by team-b
+  sourceRepos:
+    - https://github.com/Domphil87/eks-as-code.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: team-b
+  clusterResourceWhitelist: []
+  namespaceResourceBlacklist:
+    - group: ""
+      kind: ResourceQuota
+    - group: ""
+      kind: LimitRange
+    - group: rbac.authorization.k8s.io
+      kind: Role
+    - group: rbac.authorization.k8s.io
+      kind: RoleBinding
+    - group: networking.k8s.io
+      kind: NetworkPolicy
