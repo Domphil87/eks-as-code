@@ -14,6 +14,10 @@ spec:
     matchLabels: {} # filled in by kustomize labels
   template:
     spec:
+      # Zero-downtime rollouts behind the ALB: preStop keeps a stopping pod
+      # serving while the ALB deregisters it (deregistration delay 30 s,
+      # see ingress.yaml), and the grace period leaves room for both.
+      terminationGracePeriodSeconds: 45
       # Pod Security "restricted" (enforced on team-a).
       securityContext:
         runAsNonRoot: true
@@ -69,6 +73,10 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 15
           readinessProbe:
             httpGet: {path: /healthz, port: http}
             periodSeconds: 5
