@@ -1,0 +1,9 @@
+# Keeps at least one pod serving during node drains (Spot, autoscaler).
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: hello
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: {} # filled in by kustomize labels

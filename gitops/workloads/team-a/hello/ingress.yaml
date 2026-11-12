@@ -1,0 +1,34 @@
+# Joins the platform's shared ALB (IngressGroup eks-platform-as-code-dev,
+# created with Argo CD in 5b). Settings that must match across the group
+# (scheme, ssl-redirect, ssl-policy) are the same as on the Argo CD
+# Ingress. No certificate ARN: the controller finds the ACM wildcard
+# *.dev.domphil.org from the TLS host. ExternalDNS creates the record.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hello
+  annotations:
+    alb.ingress.kubernetes.io/group.name: eks-platform-as-code-dev
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/inbound-cidrs: 0.0.0.0/0
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
+spec:
+  ingressClassName: alb
+  tls:
+    - hosts:
+        - hello.dev.domphil.org
+  rules:
+    - host: hello.dev.domphil.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hello
+                port:
+                  name: http

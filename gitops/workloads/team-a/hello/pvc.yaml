@@ -1,0 +1,13 @@
+# EFS (ReadWriteMany): every replica, in any AZ, mounts the same volume.
+# The StorageClass creates an EFS access point that maps all access to
+# one POSIX user, so the non-root pods can write.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hello-shared
+spec:
+  accessModes: ["ReadWriteMany"]
+  storageClassName: efs
+  resources:
+    requests:
+      storage: 1Gi

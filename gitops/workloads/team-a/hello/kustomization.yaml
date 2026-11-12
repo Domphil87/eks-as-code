@@ -1,0 +1,23 @@
+# Kustomize (built into Argo CD). The generated ConfigMap name includes a
+# hash of its content, so editing index.html rolls the Deployment and a
+# git revert rolls it back.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: team-a
+labels:
+  - pairs:
+      app.kubernetes.io/name: hello
+      app.kubernetes.io/part-of: team-a
+    includeSelectors: true
+resources:
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+  - hpa.yaml
+  - pdb.yaml
+  - pvc.yaml
+configMapGenerator:
+  - name: hello-content
+    files:
+      - index.html
+      - default.conf

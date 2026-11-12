@@ -1,0 +1,23 @@
+# Sample application owned by team-a (Milestone 5d). It runs in the
+# team-a Argo CD project, so it can only deploy into the team-a
+# namespace and within that team's guardrails (gitops/teams/team-a).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: team-a-hello
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: team-a
+  source:
+    repoURL: https://github.com/Domphil87/eks-as-code.git
+    targetRevision: main
+    path: gitops/workloads/team-a/hello
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: team-a
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

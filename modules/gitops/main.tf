@@ -63,8 +63,16 @@ resource "helm_release" "argocd" {
           "alb.ingress.kubernetes.io/certificate-arn" = var.acm_certificate_arn
           "alb.ingress.kubernetes.io/ssl-policy"      = "ELBSecurityPolicy-TLS13-1-2-2021-06"
 
-          # Admin tool: only these source IPs may reach the ALB.
+          # Admin tool: only these source IPs may reach it. The security
+          # group rule (inbound-cidrs) is merged across the IngressGroup,
+          # so once a public app shares the ALB it opens to everyone; the
+          # source-ip condition on the listener rule keeps Argo CD limited
+          # (other IPs get the ALB's default 404).
           "alb.ingress.kubernetes.io/inbound-cidrs" = join(",", var.allowed_cidrs)
+          "alb.ingress.kubernetes.io/conditions.argocd-server" = jsonencode([{
+            field          = "source-ip"
+            sourceIpConfig = { values = var.allowed_cidrs }
+          }])
 
           "alb.ingress.kubernetes.io/healthcheck-path"         = "/healthz"
           "alb.ingress.kubernetes.io/load-balancer-attributes" = "routing.http.drop_invalid_header_fields.enabled=true"
