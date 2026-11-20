@@ -17,7 +17,8 @@ resource "aws_cloudwatch_log_group" "cluster" {
 # EKS control plane
 # ---------------------------------------------------------------
 resource "aws_eks_cluster" "this" {
-  #checkov:skip=CKV_AWS_39:Public endpoint is needed for kubectl from a laptop; restricted to specific CIDRs (CKV_AWS_38 passes)
+  #checkov:skip=CKV_AWS_39:Public endpoint is needed for kubectl from a laptop; restricted to specific CIDRs
+  #checkov:skip=CKV_AWS_38:The CIDRs come from a git-ignored tfvars file/CI secret, so Checkov cannot see them; var.endpoint_public_access_cidrs validation rejects 0.0.0.0/0 and empty lists
   #checkov:skip=CKV_AWS_58:EKS applies default envelope encryption to all Kubernetes API data with an AWS-owned key; a customer KMS key is not used to avoid cost
   #checkov:skip=CKV_AWS_37:Only audit and authenticator logs are enabled in dev to limit CloudWatch cost; enable all types in production
   #checkov:skip=CKV_AWS_339:Checkov 3.3.30 hard-codes versions up to 1.35; AWS reports 1.36 in STANDARD_SUPPORT (aws eks describe-cluster-versions)

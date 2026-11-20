@@ -33,6 +33,7 @@ resource "aws_route53_record" "caa" {
 # automatically while in use. The Load Balancer Controller finds it by
 # matching the Ingress host name, so apps do not need the ARN.
 resource "aws_acm_certificate" "wildcard" {
+  #checkov:skip=CKV2_AWS_71:Deliberate: one wildcard per environment subdomain (*.dev.domphil.org) on the shared ALB, so apps need no certificate of their own; the apex is not covered
   domain_name       = "*.${var.dns_subdomain}"
   validation_method = "DNS"
 

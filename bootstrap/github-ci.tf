@@ -124,6 +124,7 @@ resource "aws_iam_role_policy_attachment" "ci_apply_poweruser" {
 }
 
 data "aws_iam_policy_document" "ci_apply_iam" {
+  #checkov:skip=CKV_AWS_356:Only the read-only iam:Get*/List* statement uses "*" (plans read IAM across the account); every write is scoped to ARNs
   # IAM only for the roles, policies and instance profiles the layers
   # create (named <project>-<env>-*).
   statement {
@@ -152,7 +153,7 @@ data "aws_iam_policy_document" "ci_apply_iam" {
   statement {
     sid       = "ServiceLinkedRoles"
     actions   = ["iam:CreateServiceLinkedRole"]
-    resources = ["*"]
+    resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/*"]
 
     condition {
       test     = "StringLike"
@@ -187,11 +188,6 @@ data "aws_iam_policy_document" "ci_apply_iam" {
 }
 
 resource "aws_iam_role_policy" "ci_apply_iam" {
-  #checkov:skip=CKV_AWS_355:Get*/List* on * is read-only IAM, needed for plans; writes are limited to the project's name patterns
-  #checkov:skip=CKV_AWS_287:iam:* is limited to role/policy/instance-profile ARNs named <project>-<env>-*
-  #checkov:skip=CKV_AWS_286:Same as CKV_AWS_287
-  #checkov:skip=CKV_AWS_289:Same as CKV_AWS_287
-  #checkov:skip=CKV_AWS_288:Same as CKV_AWS_287
   name   = "project-iam"
   role   = aws_iam_role.ci_apply.id
   policy = data.aws_iam_policy_document.ci_apply_iam.json
