@@ -112,3 +112,20 @@ variable "ci_environments" {
   type        = list(string)
   default     = ["dev", "staging"]
 }
+
+variable "github_oidc_subject_prefix" {
+  description = <<-EOT
+    Start of the "sub" claim in the repository's GitHub OIDC tokens. The
+    repository uses GitHub's immutable subject format, which includes the
+    owner and repository IDs, so a renamed or re-created repository with
+    the same name cannot assume the CI roles. Check with:
+    gh api repos/<owner>/<repo>/actions/oidc/customization/sub
+  EOT
+  type        = string
+  default     = "repo:Domphil87@257186006/eks-as-code@1435337363"
+
+  validation {
+    condition     = can(regex("^repo:[^/]+/[^:]+$", var.github_oidc_subject_prefix))
+    error_message = "github_oidc_subject_prefix must look like repo:<owner>[@id]/<repo>[@id]."
+  }
+}
