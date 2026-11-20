@@ -478,7 +478,7 @@ runner inside the VPC ([ADR 0003](docs/adr/0003-ci-access.md)).
 |---|---|---|---|
 | `terraform-ci` | Every pull request and push to `main` | fmt, validate, TFLint, Checkov, kubeconform; plans for dev network, cluster and platform (platform on the VPC runner, skipped while dev is down), posted as PR comments | `…-plan` (read-only) |
 | `deploy-dev` | Manual (Actions tab → *Run workflow*), `main` only | Applies network → cluster (GitHub runner), then platform (VPC runner) and a smoke test | `…-apply`, after approval |
-| `teardown-dev` | Manual, type `teardown-dev` to confirm | The README teardown order: Argo CD apps, Prometheus volume, Argo CD DNS, platform, cluster, network; then a leftover check | `…-apply`, after approval |
+| `teardown-dev` | Manual, `main` only | The README teardown order: Argo CD apps, Prometheus volume, Argo CD DNS, platform, cluster, network; then a leftover check | `…-apply`, after approval |
 
 Both `deploy-dev` and `teardown-dev` run two jobs in the protected GitHub
 environment `dev`, so each asks for approval twice (infrastructure, then

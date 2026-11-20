@@ -3,17 +3,13 @@
 #              Argo CD DNS records, then destroy the platform layer
 #              (CodeBuild runner in the VPC)
 #   infra    - destroy cluster, then network (GitHub-hosted runner)
-# Bootstrap (state bucket, budget, CI roles) is never touched.
+# Bootstrap (state bucket, budget, CI roles) is never touched. There is
+# no "type to confirm" input: the protected dev environment already makes
+# every destroying job wait for a reviewer.
 name: teardown-dev
 
 on:
   workflow_dispatch:
-    inputs:
-      confirm:
-        description: Type "teardown-dev" to confirm
-        required: true
-        type: string
-
 permissions:
   contents: read
 
@@ -32,8 +28,8 @@ env:
 
 jobs:
   status:
-    name: check confirmation and dev status
-    if: github.ref == 'refs/heads/main' && inputs.confirm == 'teardown-dev'
+    name: check dev status
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
