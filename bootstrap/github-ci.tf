@@ -203,3 +203,12 @@ resource "aws_codeconnections_connection" "github" {
   name          = "${var.project}-github"
   provider_type = "GitHub"
 }
+
+# Account-wide (per region) credential CodeBuild uses to reach GitHub,
+# backed by the connection above. Lets the runner project register its
+# webhook and receive Actions jobs. The account had none before.
+resource "aws_codebuild_source_credential" "github" {
+  auth_type   = "CODECONNECTIONS"
+  server_type = "GITHUB"
+  token       = aws_codeconnections_connection.github.arn
+}

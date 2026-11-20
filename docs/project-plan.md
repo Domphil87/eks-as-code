@@ -19,7 +19,7 @@ this repository.
 | 5c | GitOps: team namespaces (team-a, team-b), RBAC, quotas, Pod Security, Argo CD projects | ✅ | ✅ 2026-11-11 (RBAC, Pod Security, quota, project boundary, self-heal verified) | None |
 | 5d | GitOps: team-a sample app `hello` (HTTPS, HPA, EFS), rollback by `git revert` | ✅ | ✅ 2026-11-11 (0 errors in 1,048 requests across release + rollback) | Shares the 5b ALB; EFS cents |
 | 6a | CI: OIDC plan/apply roles (bootstrap), GitHub connection, PR checks (fmt, validate, TFLint, Checkov, kubeconform) and plans for network/cluster ([ADR 0003](adr/0003-ci-access.md)) | ✅ | 🔄 roles applied 2026-11-19 | None |
-| 6b | CI: CodeBuild-hosted runner in the VPC, cluster access for CI roles, platform plan, approved deploy/teardown workflows | ⬜ | ⬜ | CodeBuild per minute |
+| 6b | CI: CodeBuild-hosted runner in the VPC, cluster access for CI roles, platform plan, approved deploy/teardown workflows, branch protection | ✅ | 🔄 source credential applied 2026-11-19 | CodeBuild about $0.01/min |
 | 6c | CI: end-to-end test (PR plans, rebuild and teardown from workflows) | ⬜ | ⬜ | Yes (temporary) |
 | 7 | Staging from the same modules | ⬜ | ⬜ | Yes (temporary) |
 | 8 | Run the 16 acceptance tests and record the evidence | ⬜ | ⬜ | Yes (temporary) |
@@ -94,7 +94,7 @@ left; apex unchanged. Bootstrap kept.
   switching. Its `fixboard` namespace in the dev
   cluster was removed on 2026-11-10 (with your approval) so teardown is
   not blocked by an untracked EFS access point.
-- **Spot resilience (from the 2026-11-09 incident).** At the next dev
+- **Spot resilience (from the 2026-11-09 incident).** Dev part done in 6b: 9 instance types (added m6a, m7i, m7a, m7i-flex, all offered in the 3 AZs). At the next dev
   rebuild (when replacing the node group is free), add more 2 vCPU / 8 GiB
   types (for example `m6a.large`, `m7i.large`, `m7a.large`,
   `m7i-flex.large`) for deeper Spot pools per AZ; verify availability per

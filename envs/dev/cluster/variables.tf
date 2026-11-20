@@ -83,3 +83,9 @@ variable "node_max_size" {
   description = "Maximum node count."
   type        = number
 }
+
+variable "cluster_viewer_principal_arns" {
+  description = "IAM principals that get read-only cluster access (for example the CI plan role)."
+  type        = list(string)
+  default     = []
+}

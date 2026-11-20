@@ -90,6 +90,44 @@ resource "aws_eks_access_policy_association" "admin" {
   depends_on = [aws_eks_access_entry.admin]
 }
 
+# Read-only access (including Secrets, which the Helm provider reads to
+# plan releases), for example the CI plan role.
+resource "aws_eks_access_entry" "viewer" {
+  for_each = toset(var.cluster_viewer_principal_arns)
+
+  cluster_name  = aws_eks_cluster.this.name
+  principal_arn = each.value
+  type          = "STANDARD"
+
+  tags = var.tags
+}
+
+resource "aws_eks_access_policy_association" "viewer" {
+  for_each = toset(var.cluster_viewer_principal_arns)
+
+  cluster_name  = aws_eks_cluster.this.name
+  principal_arn = each.value
+  policy_arn    = "arn:${data.aws_partition.current.partition}:eks::aws:cluster-access-policy/AmazonEKSAdminViewPolicy"
+
+  access_scope {
+    type = "cluster"
+  }
+
+  depends_on = [aws_eks_access_entry.viewer]
+}
+
+# Private API access from inside the VPC, for example the CI runner.
+resource "aws_vpc_security_group_ingress_rule" "api_from_sg" {
+  for_each = toset(var.api_ingress_security_group_ids)
+
+  security_group_id            = aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
+  description                  = "Kubernetes API (private endpoint) from ${each.value}"
+  referenced_security_group_id = each.value
+  ip_protocol                  = "tcp"
+  from_port                    = 443
+  to_port                      = 443
+}
+
 # ---------------------------------------------------------------
 # Core add-ons
 # ---------------------------------------------------------------
