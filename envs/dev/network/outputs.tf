@@ -35,3 +35,13 @@ output "nat_public_ips" {
   description = "Public IPs of the NAT gateway(s)."
   value       = module.network.nat_public_ips
 }
+
+output "ci_runner_project_name" {
+  description = "CodeBuild runner project; workflows use runs-on: codebuild-<name>-<run_id>-<run_attempt>. Null when disabled."
+  value       = one(module.ci_runner[*].project_name)
+}
+
+output "ci_runner_security_group_id" {
+  description = "Security group of the runner builds, allowed to the EKS API by the cluster layer. Null when disabled."
+  value       = one(module.ci_runner[*].security_group_id)
+}

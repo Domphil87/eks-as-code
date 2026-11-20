@@ -1,0 +1,76 @@
+# terraform plan for one layer, printed in the log and (on pull requests)
+# posted as a PR comment that is updated on every push. Expects AWS
+# credentials and Terraform to be set up by the calling job.
+name: terraform-plan
+description: Plan one Terraform layer and comment the result on the pull request.
+
+inputs:
+  layer:
+    description: Layer path below envs/, for example dev/network.
+    required: true
+  ready:
+    description: '"false" when the upstream layer is not deployed; the plan is skipped and the comment says so.'
+    required: false
+    default: "true"
+  skip-reason:
+    description: Text for the comment when the plan is skipped.
+    required: false
+    default: The upstream layer is not deployed (dev is torn down).
+
+runs:
+  using: composite
+  steps:
+    - name: terraform plan
+      id: plan
+      if: inputs.ready == 'true'
+      shell: bash
+      working-directory: envs/${{ inputs.layer }}
+      run: |
+        terraform init -input=false >/dev/null
+        set +e
+        terraform plan -input=false -no-color -lock-timeout=5m -detailed-exitcode -out=tfplan > plan.log 2>&1
+        code=$?
+        set -e
+        cat plan.log
+        # 0 = no changes, 2 = changes, anything else = error
+        if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then exit "$code"; fi
+        terraform show -no-color tfplan > plan.txt
+        summary=$(grep -E '^(Plan:|No changes\.)' plan.log | tail -1)
+        echo "summary=${summary:-unknown}" >> "$GITHUB_OUTPUT"
+        echo "### Plan \`${{ inputs.layer }}\`: ${summary:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+
+    - name: comment on the pull request
+      if: always() && github.event_name == 'pull_request'
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+      env:
+        LAYER: ${{ inputs.layer }}
+        READY: ${{ inputs.ready }}
+        SKIP_REASON: ${{ inputs.skip-reason }}
+        OUTCOME: ${{ steps.plan.outcome }}
+        SUMMARY: ${{ steps.plan.outputs.summary }}
+      with:
+        script: |
+          const fs = require('fs');
+          const { LAYER, READY, SKIP_REASON, OUTCOME, SUMMARY } = process.env;
+          const marker = `<!-- terraform-plan:${LAYER} -->`;
+          const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+          let body;
+          if (READY !== 'true') {
+            body = `${marker}\n### Plan \`${LAYER}\`: skipped\n${SKIP_REASON}`;
+          } else if (OUTCOME !== 'success') {
+            body = `${marker}\n### Plan \`${LAYER}\`: failed\nSee the [workflow run](${run}).`;
+          } else {
+            let plan = fs.readFileSync(`envs/${LAYER}/plan.txt`, 'utf8');
+            const max = 60000;
+            if (plan.length > max) plan = plan.slice(0, max) + '\n... (truncated, see the workflow run)';
+            body = `${marker}\n### Plan \`${LAYER}\`: ${SUMMARY}\n<details><summary>Show plan</summary>\n\n\`\`\`terraform\n${plan}\n\`\`\`\n</details>`;
+          }
+          const { data: comments } = await github.rest.issues.listComments({
+            ...context.repo, issue_number: context.issue.number, per_page: 100,
+          });
+          const existing = comments.find(c => c.body.startsWith(marker));
+          if (existing) {
+            await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body });
+          } else {
+            await github.rest.issues.createComment({ ...context.repo, issue_number: context.issue.number, body });
+          }

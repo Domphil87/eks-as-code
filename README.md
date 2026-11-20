@@ -468,6 +468,30 @@ guardrails. Source: [gitops/workloads/team-a/hello/](gitops/workloads/team-a/hel
    deregistered them (7 of 525 requests failed). Fixed with readiness
    gates, `preStop` and a shorter deregistration delay (0 of 1,048).
 
+## CI/CD with GitHub Actions (Milestone 6)
+
+GitHub Actions gets short-lived AWS credentials through OIDC (no stored
+keys), and jobs that need the Kubernetes API run on a CodeBuild-hosted
+runner inside the VPC ([ADR 0003](docs/adr/0003-ci-access.md)).
+
+| Workflow | Trigger | What it does | AWS role |
+|---|---|---|---|
+| `terraform-ci` | Every pull request and push to `main` | fmt, validate, TFLint, Checkov, kubeconform; plans for dev network, cluster and platform (platform on the VPC runner, skipped while dev is down), posted as PR comments | `…-plan` (read-only) |
+| `deploy-dev` | Manual (Actions tab → *Run workflow*), `main` only | Applies network → cluster (GitHub runner), then platform (VPC runner) and a smoke test | `…-apply`, after approval |
+| `teardown-dev` | Manual, type `teardown-dev` to confirm | The README teardown order: Argo CD apps, Prometheus volume, Argo CD DNS, platform, cluster, network; then a leftover check | `…-apply`, after approval |
+
+Both `deploy-dev` and `teardown-dev` run two jobs in the protected GitHub
+environment `dev`, so each asks for approval twice (infrastructure, then
+platform). Admin IPs come from the `ADMIN_CIDRS` secret and never appear
+in logs (`sensitive` variables).
+
+| Piece | Where |
+|---|---|
+| OIDC roles, GitHub connection, CodeBuild source credential | `bootstrap/github-ci.tf` (applied locally only) |
+| CodeBuild runner (webhook limited to the owner's account and these workflows) | `modules/ci-runner`, created by the network layer |
+| Runner → private API on 443; CI roles' cluster access (apply: admin, plan: read-only) | `modules/eks`, cluster layer |
+| Shared steps | `.github/actions/terraform-plan`, `.github/actions/setup-kubectl` |
+
 ## Cost management
 
 - An **AWS Budget alerts you; it does not cap spending.** Resources keep

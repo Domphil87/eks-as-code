@@ -25,6 +25,13 @@ addon_versions = {
 # Your Terraform/CLI IAM user gets cluster-admin via an EKS access entry.
 cluster_admin_principal_arns = [
   "arn:aws:iam::353695163160:user/aws-cli-terraform-DO-NOT-DELETE",
+  # GitHub Actions apply role (protected environments only, Milestone 6b)
+  "arn:aws:iam::353695163160:role/github-actions-eks-platform-as-code-apply",
+]
+
+# GitHub Actions plan role: read-only, to plan the platform layer.
+cluster_viewer_principal_arns = [
+  "arn:aws:iam::353695163160:role/github-actions-eks-platform-as-code-plan",
 ]
 
 # Security-relevant logs only, 7 days, to keep CloudWatch cost low.
@@ -33,8 +40,10 @@ log_retention_days = 7
 
 # Spot: about 70% cheaper than on-demand; AWS may reclaim a node with 2
 # minutes' warning and EKS replaces it. All types are 2 vCPU / 8 GiB.
-node_capacity_type  = "SPOT"
-node_instance_types = ["t3a.large", "t3.large", "m5a.large", "m6i.large", "m5.large"]
+node_capacity_type = "SPOT"
+# 2 vCPU / 8 GiB types, all offered in use1-az1/az2/az4 (checked 2026-11-19).
+# More types = deeper Spot pools per AZ (open item from the 2026-11-09 Spot incident).
+node_instance_types = ["t3a.large", "t3.large", "m5a.large", "m6i.large", "m5.large", "m6a.large", "m7i.large", "m7a.large", "m7i-flex.large"]
 
 # 3 nodes = one per AZ. Max 6 leaves room for the Cluster Autoscaler test.
 node_min_size     = 3

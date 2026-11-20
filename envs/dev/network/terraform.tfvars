@@ -26,3 +26,10 @@ public_subnet_cidrs = ["10.10.96.0/24", "10.10.97.0/24", "10.10.98.0/24"]
 # Dev: one NAT gateway to save about $72/month vs. one per AZ.
 # Trade-off: if us-east-1a has an outage, private subnets lose internet access.
 single_nat_gateway = true
+
+# CI runner (Milestone 6b). Only runs triggered by Domphil87 (GitHub
+# account ID 257186006) from these workflows reach the runner.
+ci_github_repository_url = "https://github.com/Domphil87/eks-as-code"
+ci_github_connection_arn = "arn:aws:codeconnections:us-east-1:353695163160:connection/27285aab-f9bc-4de9-ac87-ff77367aaae8"
+ci_allowed_actor_ids     = ["257186006"]
+ci_workflow_names        = ["terraform-ci", "deploy-dev", "teardown-dev"]
