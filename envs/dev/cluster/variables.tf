@@ -41,6 +41,7 @@ variable "addon_versions" {
 variable "endpoint_public_access_cidrs" {
   description = "CIDRs allowed to reach the public API endpoint. Set in the git-ignored admin-access.auto.tfvars."
   type        = list(string)
+  sensitive   = true # keeps the admin IP out of public CI logs and PR comments
 }
 
 variable "cluster_admin_principal_arns" {

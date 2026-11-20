@@ -91,6 +91,7 @@ variable "argocd_chart_version" {
 variable "admin_cidrs" {
   description = "Admin source IPs allowed to reach the ALB (set in the git-ignored admin-access.auto.tfvars)."
   type        = list(string)
+  sensitive   = true # keeps the admin IP out of public CI logs and PR comments
 }
 
 variable "gitops_repo_url" {
