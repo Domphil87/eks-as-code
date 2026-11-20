@@ -47,8 +47,8 @@ data "aws_iam_policy_document" "ci_plan_trust" {
       test     = "StringEquals"
       variable = local.github_oidc_sub
       values = [
-        "repo:${var.github_repository}:pull_request",
-        "repo:${var.github_repository}:ref:refs/heads/main",
+        "${var.github_oidc_subject_prefix}:pull_request",
+        "${var.github_oidc_subject_prefix}:ref:refs/heads/main",
       ]
     }
   }
@@ -104,7 +104,7 @@ data "aws_iam_policy_document" "ci_apply_trust" {
     condition {
       test     = "StringEquals"
       variable = local.github_oidc_sub
-      values   = [for env in var.ci_environments : "repo:${var.github_repository}:environment:${env}"]
+      values   = [for env in var.ci_environments : "${var.github_oidc_subject_prefix}:environment:${env}"]
     }
   }
 }

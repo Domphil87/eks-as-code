@@ -23,6 +23,9 @@ Two questions:
 | `github-actions-eks-platform-as-code-plan` | Pull requests from this repository and pushes to `main` | `ReadOnlyAccess` + write/delete of state `.tflock` objects |
 | `github-actions-eks-platform-as-code-apply` | Jobs running in the protected GitHub environments `dev` / `staging` (required reviewer) | `PowerUserAccess` + IAM only on `eks-platform-as-code-<env>-*`; deny on changing the state bucket |
 
+Trust is matched on GitHub's immutable OIDC subject
+(`repo:Domphil87@257186006/eks-as-code@1435337363:...`), so a renamed or
+re-created repository with the same name cannot assume the roles.
 Fork pull requests get no OIDC token, so they can only run the static
 checks. The CI roles are named outside the pattern the apply role may
 manage, so CI cannot widen its own rights.

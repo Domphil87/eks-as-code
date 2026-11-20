@@ -146,7 +146,7 @@ are documented in the root README.
 
 | Resource | Purpose |
 |---|---|
-| `github-actions-eks-platform-as-code-plan` | Read-only role for `terraform plan`; trusted for pull requests from `Domphil87/eks-as-code` and pushes to `main` |
+| `github-actions-eks-platform-as-code-plan` | Read-only role for `terraform plan`; trusted for pull requests from `Domphil87/eks-as-code` and pushes to `main`, matched on GitHub's immutable subject (owner and repository IDs, variable `github_oidc_subject_prefix`) |
 | `github-actions-eks-platform-as-code-apply` | Apply role; trusted only for jobs in the protected GitHub environments `dev` and `staging` |
 | `eks-platform-as-code-github` (CodeConnections) | Lets the CodeBuild-hosted runner (6b) receive jobs from GitHub |
 
