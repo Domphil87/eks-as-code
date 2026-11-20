@@ -36,6 +36,18 @@ resource IDs changing; add-on pins refreshed to AWS defaults (kube-proxy
 eksbuild.60, coredns eksbuild.28, EFS CSI v3.5.4). All checks and drift
 clean.
 
+**2026-11-19:** dev (2–5d) destroyed in order root Application →
+platform (56) → cluster (23) → network (26), after running unnoticed
+for 8 days (about $50–60; the project budget could not alert because
+the `Project` cost allocation tag was still inactive; now activated).
+Two leftovers the procedure did not cover were removed by hand and the
+README teardown steps updated: the Prometheus EBS volume (StatefulSet
+PVC, from 4d) and the `argocd.dev.domphil.org` A/AAAA/TXT records
+(ExternalDNS was removed together with the Argo CD Ingress). Sweep: no
+instances, volumes, ENIs, NAT gateways, EIPs, load balancers, target
+groups, EFS, secrets, log groups, certificates, IAM roles or DNS records
+left; apex unchanged. Bootstrap kept.
+
 ## Decisions so far
 
 | Topic | Decision |
@@ -99,6 +111,6 @@ clean.
 - **Shared ALB governance.** Any team Ingress can join the IngressGroup `eks-platform-as-code-dev`; a conflicting group-wide setting (`inbound-cidrs`, `ssl-policy`, `scheme`, `ssl-redirect`) stops the controller for every Ingress in the group, Argo CD included (seen in 5d). Before more teams onboard: an `IngressClassParams` that fixes the group and these settings, or a Kyverno/ValidatingAdmissionPolicy check.
 - Install the GitHub CLI before Milestone 6 (Helm 4.1.4 is installed).
 - CI runners are not in the cluster endpoint allow-list; decide how CI reaches the API for the platform layer in Milestone 6.
-- Activate the `Project` cost allocation tag on or after 2026-10-28 (about 24 hours after bootstrap apply).
+- ~~Activate the `Project` cost allocation tag~~: activated 2026-11-19 (costs are tagged from then on, not retroactively).
 - Tighten the pre-existing `github-action-role` trust policy (outside this project).
 - Enable MFA on the `aws-cli-terraform-DO-NOT-DELETE` IAM user.

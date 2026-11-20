@@ -496,9 +496,22 @@ Reverse of creation: GitOps apps → platform → cluster → network → bootst
 ```powershell
 # From 5b: remove everything Argo CD deployed first (its finalizer deletes
 # the apps, their Ingresses and ALBs) while the controllers still run.
+kubectl config use-context arn:aws:eks:us-east-1:353695163160:cluster/eks-platform-as-code-dev
 kubectl -n argocd delete application root --wait=true
-kubectl get pvc -A                            # must be empty: PVC volumes are not in Terraform state
-kubectl get ingress -A                        # only argocd/argocd-server (removed by the platform destroy); after the destroy, check no ALB is left:
+
+# From 4d: Helm never deletes StatefulSet volumes, so Prometheus's EBS
+# volume would be orphaned. Stop Prometheus, then delete its PVC while the
+# EBS CSI driver still runs (the volume is deleted with it).
+kubectl -n monitoring patch prometheus kube-prometheus-stack-prometheus --type=merge -p '{\"spec\":{\"replicas\":0}}'
+kubectl -n monitoring wait --for=delete pod/prometheus-kube-prometheus-stack-prometheus-0 --timeout=180s
+kubectl -n monitoring delete pvc --all --wait=true
+kubectl get pvc,pv -A                         # must be empty: PVC volumes are not in Terraform state
+
+# From 5b: delete the Argo CD Ingress while ExternalDNS still runs, so it
+# removes argocd.dev.domphil.org (otherwise the records outlive the ALB).
+kubectl -n argocd delete ingress argocd-server --wait=true
+nslookup argocd.dev.domphil.org 8.8.8.8      # repeat until NXDOMAIN (about 1-2 minutes)
+kubectl get ingress -A                        # must be empty; after the destroy, check no ALB is left:
 aws elbv2 describe-load-balancers --query "LoadBalancers[].LoadBalancerName"
 cd C:\Users\domin\eks-platform-as-code\envs\dev\platform
 terraform plan -destroy -out=destroy.tfplan   # review: only add-ons, roles, StorageClasses
