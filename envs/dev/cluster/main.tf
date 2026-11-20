@@ -12,8 +12,12 @@ module "eks" {
   vpc_id             = local.network.vpc_id
   private_subnet_ids = local.network.private_subnet_ids
 
-  endpoint_public_access_cidrs = var.endpoint_public_access_cidrs
-  cluster_admin_principal_arns = var.cluster_admin_principal_arns
+  endpoint_public_access_cidrs  = var.endpoint_public_access_cidrs
+  cluster_admin_principal_arns  = var.cluster_admin_principal_arns
+  cluster_viewer_principal_arns = var.cluster_viewer_principal_arns
+
+  # The CI runner (network layer) reaches the API privately.
+  api_ingress_security_group_ids = compact([try(local.network.ci_runner_security_group_id, null)])
 
   enabled_log_types  = var.enabled_log_types
   log_retention_days = var.log_retention_days

@@ -141,3 +141,15 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "cluster_viewer_principal_arns" {
+  description = "IAM principals that get read-only cluster access (AmazonEKSAdminViewPolicy, includes Secrets)."
+  type        = list(string)
+  default     = []
+}
+
+variable "api_ingress_security_group_ids" {
+  description = "Security groups allowed to reach the private API endpoint on 443 (for example the CI runner)."
+  type        = list(string)
+  default     = []
+}

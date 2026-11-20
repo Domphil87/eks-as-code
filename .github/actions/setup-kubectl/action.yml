@@ -1,0 +1,29 @@
+# Installs a pinned, checksum-verified kubectl (matching Kubernetes 1.36).
+name: setup-kubectl
+description: Install a pinned kubectl.
+
+inputs:
+  version:
+    description: kubectl version.
+    required: false
+    default: v1.36.6
+  sha256:
+    description: SHA-256 of the linux/amd64 binary for that version.
+    required: false
+    default: 29818b6729dc9262b692307470d0558d027725e738be5dd47c760261868a2634
+
+runs:
+  using: composite
+  steps:
+    - name: install kubectl
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        SHA256: ${{ inputs.sha256 }}
+      run: |
+        dir="$RUNNER_TEMP/kubectl-bin"
+        mkdir -p "$dir"
+        curl -fsSL -o "$dir/kubectl" "https://dl.k8s.io/release/${VERSION}/bin/linux/amd64/kubectl"
+        echo "${SHA256}  $dir/kubectl" | sha256sum -c -
+        chmod +x "$dir/kubectl"
+        echo "$dir" >> "$GITHUB_PATH"
