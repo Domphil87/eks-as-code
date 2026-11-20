@@ -92,3 +92,23 @@ variable "budget_filter_by_project_tag" {
   type        = bool
   default     = true
 }
+
+# ---------------------------------------------------------------
+# CI/CD (GitHub Actions, Milestone 6)
+# ---------------------------------------------------------------
+variable "github_repository" {
+  description = "GitHub repository (owner/name) whose workflows may assume the CI roles."
+  type        = string
+  default     = "Domphil87/eks-as-code"
+
+  validation {
+    condition     = can(regex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", var.github_repository))
+    error_message = "github_repository must look like owner/name."
+  }
+}
+
+variable "ci_environments" {
+  description = "Environments CI may apply to. Each needs a protected GitHub environment of the same name."
+  type        = list(string)
+  default     = ["dev", "staging"]
+}

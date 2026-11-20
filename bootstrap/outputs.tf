@@ -32,3 +32,23 @@ output "backend_config_example" {
     }
   EOT
 }
+
+output "ci_plan_role_arn" {
+  description = "Role for terraform plan in GitHub Actions. Set as the repository variable AWS_PLAN_ROLE_ARN."
+  value       = aws_iam_role.ci_plan.arn
+}
+
+output "ci_apply_role_arn" {
+  description = "Role for terraform apply in protected GitHub environments. Set as the repository variable AWS_APPLY_ROLE_ARN."
+  value       = aws_iam_role.ci_apply.arn
+}
+
+output "github_connection_arn" {
+  description = "CodeConnections connection to GitHub, used by the CodeBuild-hosted runner."
+  value       = aws_codeconnections_connection.github.arn
+}
+
+output "github_connection_status" {
+  description = "PENDING until completed once in the AWS console; must be AVAILABLE for the CodeBuild runner."
+  value       = aws_codeconnections_connection.github.connection_status
+}

@@ -1,0 +1,200 @@
+# Checks every pull request (and main) before anything reaches AWS:
+#   static  - terraform fmt + validate, TFLint, Checkov, kubeconform (no AWS access)
+#   plan    - terraform plan per layer with the read-only role, posted on the PR
+#
+# Actions are pinned to full commit SHAs (tags can be moved); tool
+# versions are pinned below. Terraform matches the local version so state
+# written by either stays compatible.
+name: terraform-ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TF_VERSION: 1.16.7
+  TFLINT_VERSION: v0.65.0
+  CHECKOV_VERSION: 3.4.3
+  KUBECONFORM_VERSION: v0.8.0
+  KUBERNETES_VERSION: 1.36.0
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  AWS_REGION: us-east-1
+
+jobs:
+  static:
+    name: fmt, validate, lint, security scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: terraform fmt
+        run: terraform fmt -check -recursive -diff
+
+      - name: terraform validate (every root module)
+        run: |
+          for dir in bootstrap envs/dev/network envs/dev/cluster envs/dev/platform; do
+            echo "::group::$dir"
+            terraform -chdir="$dir" init -backend=false -input=false >/dev/null
+            terraform -chdir="$dir" validate -no-color
+            echo "::endgroup::"
+          done
+
+      - uses: terraform-linters/setup-tflint@6ffdbaa3be476b3431f7275c26966ef32ff60337 # v6.3.2
+        with:
+          tflint_version: ${{ env.TFLINT_VERSION }}
+
+      - name: tflint
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # avoids rate limits when downloading the AWS ruleset
+        run: |
+          tflint --init
+          tflint --recursive --format compact
+
+      - name: checkov (Terraform and workflows)
+        run: |
+          pipx install "checkov==${CHECKOV_VERSION}"
+          checkov --directory . --framework terraform github_actions --quiet --compact --skip-path .terraform
+
+      - name: kubeconform (gitops manifests)
+        run: |
+          curl -fsSL -o /tmp/kubeconform.tar.gz \
+            "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz"
+          tar -xzf /tmp/kubeconform.tar.gz -C /tmp kubeconform
+          mkdir -p /tmp/rendered
+          for app in gitops/workloads/*/*/; do
+            kubectl kustomize "$app" > "/tmp/rendered/$(echo "$app" | tr '/' '_').yaml"
+          done
+          # Argo CD CRDs (Application, AppProject) come from the CRDs catalog.
+          /tmp/kubeconform -strict -summary \
+            -kubernetes-version "${KUBERNETES_VERSION}" \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            gitops/apps gitops/teams /tmp/rendered
+
+  plan:
+    name: plan dev/${{ matrix.layer }}
+    needs: static
+    # Fork PRs get no OIDC token and no secrets; skip them instead of failing.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write # exchange the GitHub OIDC token for AWS credentials
+      pull-requests: write # post the plan as a PR comment
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - layer: network
+            upstream: ""
+          - layer: cluster
+            upstream: network
+          # The platform layer needs the Kubernetes API, reached from the
+          # CodeBuild runner in the VPC (Milestone 6b).
+    env:
+      # Admin IPs live outside Git; the variables are marked sensitive,
+      # so plans print "(sensitive value)" instead of the IP.
+      TF_VAR_endpoint_public_access_cidrs: ${{ secrets.ADMIN_CIDRS }}
+      TF_VAR_admin_cidrs: ${{ secrets.ADMIN_CIDRS }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          role-session-name: gha-plan-${{ matrix.layer }}-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # A layer reads its upstream layer's outputs; while dev is torn down
+      # those are empty and the plan cannot run, which is not an error.
+      - name: check upstream layer
+        id: upstream
+        run: |
+          if [ -z "${{ matrix.upstream }}" ]; then echo "ready=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          dir="envs/dev/${{ matrix.upstream }}"
+          terraform -chdir="$dir" init -input=false >/dev/null
+          if [ "$(terraform -chdir="$dir" output -json)" = "{}" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::dev/${{ matrix.upstream }} is not deployed, so dev/${{ matrix.layer }} cannot be planned."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: terraform plan
+        id: plan
+        if: steps.upstream.outputs.ready == 'true'
+        working-directory: envs/dev/${{ matrix.layer }}
+        run: |
+          terraform init -input=false >/dev/null
+          set +e
+          terraform plan -input=false -no-color -lock-timeout=5m -detailed-exitcode -out=tfplan > plan.log 2>&1
+          code=$?
+          set -e
+          cat plan.log
+          # 0 = no changes, 2 = changes, anything else = error
+          if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then exit "$code"; fi
+          terraform show -no-color tfplan > plan.txt
+          summary=$(grep -E '^(Plan:|No changes\.)' plan.log | tail -1)
+          echo "summary=${summary:-unknown}" >> "$GITHUB_OUTPUT"
+
+      - name: comment on the pull request
+        if: github.event_name == 'pull_request' && always() && steps.upstream.outcome == 'success'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          LAYER: dev/${{ matrix.layer }}
+          READY: ${{ steps.upstream.outputs.ready }}
+          OUTCOME: ${{ steps.plan.outcome }}
+          SUMMARY: ${{ steps.plan.outputs.summary }}
+        with:
+          script: |
+            const fs = require('fs');
+            const { LAYER, READY, OUTCOME, SUMMARY } = process.env;
+            const marker = `<!-- terraform-plan:${LAYER} -->`;
+            const planFile = `envs/${LAYER}/plan.txt`;
+            let body;
+            if (READY !== 'true') {
+              body = `${marker}\n### Plan \`${LAYER}\`: skipped\nThe upstream layer is not deployed (dev is torn down).`;
+            } else if (OUTCOME !== 'success') {
+              body = `${marker}\n### Plan \`${LAYER}\`: failed\nSee the [workflow run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}).`;
+            } else {
+              let plan = fs.readFileSync(planFile, 'utf8');
+              const max = 60000;
+              if (plan.length > max) plan = plan.slice(0, max) + '\n... (truncated, see the workflow run)';
+              body = `${marker}\n### Plan \`${LAYER}\`: ${SUMMARY}\n<details><summary>Show plan</summary>\n\n\`\`\`terraform\n${plan}\n\`\`\`\n</details>`;
+            }
+            const { data: comments } = await github.rest.issues.listComments({
+              ...context.repo, issue_number: context.issue.number, per_page: 100,
+            });
+            const existing = comments.find(c => c.body.startsWith(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: context.issue.number, body });
+            }

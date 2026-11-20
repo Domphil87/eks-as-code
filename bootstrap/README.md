@@ -139,3 +139,27 @@ small change.
 The bucket has `prevent_destroy = true`, so Terraform refuses to delete it.
 This is intentional: it must outlive every other layer. Final teardown steps
 are documented in the root README.
+
+## CI roles and GitHub connection (Milestone 6a)
+
+`github-ci.tf` adds what GitHub Actions needs ([ADR 0003](../docs/adr/0003-ci-access.md)):
+
+| Resource | Purpose |
+|---|---|
+| `github-actions-eks-platform-as-code-plan` | Read-only role for `terraform plan`; trusted for pull requests from `Domphil87/eks-as-code` and pushes to `main` |
+| `github-actions-eks-platform-as-code-apply` | Apply role; trusted only for jobs in the protected GitHub environments `dev` and `staging` |
+| `eks-platform-as-code-github` (CodeConnections) | Lets the CodeBuild-hosted runner (6b) receive jobs from GitHub |
+
+The account's existing GitHub OIDC provider is only read, never changed.
+Bootstrap is applied from your machine only: CI cannot change its own roles.
+
+One-time steps after `terraform apply`:
+
+1. **Approve the connection:** AWS console > Developer Tools > Settings >
+   Connections > `eks-platform-as-code-github` > *Update pending
+   connection*, install the AWS Connector app on `Domphil87/eks-as-code`
+   only. `terraform output github_connection_status` then shows `AVAILABLE`.
+2. **Repository settings** (Settings > Secrets and variables > Actions):
+   variables `AWS_PLAN_ROLE_ARN` and `AWS_APPLY_ROLE_ARN` from the
+   outputs, and the secret `ADMIN_CIDRS` in HCL list form, for example
+   `["203.0.113.10/32"]`.

@@ -18,7 +18,9 @@ this repository.
 | 5b | GitOps: Argo CD (chart 10.11.6 / v3.5.6), ALB at `argocd.dev.domphil.org` (admin IP only), root App of Apps | ✅ | ✅ 2026-11-10 (HTTPS, IP limit, self-heal verified; ExternalDNS zone fix) | ALB about $0.025/hour |
 | 5c | GitOps: team namespaces (team-a, team-b), RBAC, quotas, Pod Security, Argo CD projects | ✅ | ✅ 2026-11-11 (RBAC, Pod Security, quota, project boundary, self-heal verified) | None |
 | 5d | GitOps: team-a sample app `hello` (HTTPS, HPA, EFS), rollback by `git revert` | ✅ | ✅ 2026-11-11 (0 errors in 1,048 requests across release + rollback) | Shares the 5b ALB; EFS cents |
-| 6 | CI/CD: OIDC plan/apply roles, fmt/validate/TFLint/Checkov/plan, approvals | ⬜ | ⬜ | None |
+| 6a | CI: OIDC plan/apply roles (bootstrap), GitHub connection, PR checks (fmt, validate, TFLint, Checkov, kubeconform) and plans for network/cluster ([ADR 0003](adr/0003-ci-access.md)) | ✅ | 🔄 roles applied 2026-11-19 | None |
+| 6b | CI: CodeBuild-hosted runner in the VPC, cluster access for CI roles, platform plan, approved deploy/teardown workflows | ⬜ | ⬜ | CodeBuild per minute |
+| 6c | CI: end-to-end test (PR plans, rebuild and teardown from workflows) | ⬜ | ⬜ | Yes (temporary) |
 | 7 | Staging from the same modules | ⬜ | ⬜ | Yes (temporary) |
 | 8 | Run the 16 acceptance tests and record the evidence | ⬜ | ⬜ | Yes (temporary) |
 | 9 | Ordered teardown and leftover-resource checks | ⬜ | ⬜ | Reduces cost |
@@ -109,8 +111,8 @@ left; apex unchanged. Bootstrap kept.
   `cluster_autoscaler_version` together.
 - **Team access from IAM.** The `team-a-developers` / `team-b-developers` groups (5c) are not mapped to IAM principals yet; add EKS access entries (cluster layer) with `kubernetes_groups` when real team roles exist.
 - **Shared ALB governance.** Any team Ingress can join the IngressGroup `eks-platform-as-code-dev`; a conflicting group-wide setting (`inbound-cidrs`, `ssl-policy`, `scheme`, `ssl-redirect`) stops the controller for every Ingress in the group, Argo CD included (seen in 5d). Before more teams onboard: an `IngressClassParams` that fixes the group and these settings, or a Kyverno/ValidatingAdmissionPolicy check.
-- Install the GitHub CLI before Milestone 6 (Helm 4.1.4 is installed).
-- CI runners are not in the cluster endpoint allow-list; decide how CI reaches the API for the platform layer in Milestone 6.
+- Install the GitHub CLI before Milestone 6 (Helm 4.1.4 is installed); in progress (6a).
+- ~~CI runners are not in the cluster endpoint allow-list~~: decided in [ADR 0003](adr/0003-ci-access.md) (CodeBuild runner in the VPC, 6b).
 - ~~Activate the `Project` cost allocation tag~~: activated 2026-11-19 (costs are tagged from then on, not retroactively).
 - Tighten the pre-existing `github-action-role` trust policy (outside this project).
 - Enable MFA on the `aws-cli-terraform-DO-NOT-DELETE` IAM user.
