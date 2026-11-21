@@ -11,7 +11,10 @@ are pinned Helm releases, and application teams deploy through Git (GitOps).
 > and #12 pass. **Milestone 5 (GitOps) complete (2026-11-11):** code on
 > GitHub (5a), Argo CD (5b), team namespaces with guardrails (5c) and a
 > team-a sample app at `https://hello.dev.domphil.org` with HPA, EFS and
-> zero-downtime rollback by `git revert` (5d). Next: CI/CD (Milestone 6).
+> zero-downtime rollback by `git revert` (5d). **Milestone 6 (CI/CD)
+> complete (2026-11-20):** GitHub Actions with OIDC, PR checks and plans,
+> a CodeBuild runner in the VPC, and approved `deploy-dev` / `teardown-dev`
+> workflows, verified end to end. Next: staging (Milestone 7).
 > See [docs/project-plan.md](docs/project-plan.md) for progress.
 
 ## Deployment status
@@ -30,7 +33,7 @@ are pinned Helm releases, and application teams deploy through Git (GitOps).
 | GitOps 5b: Argo CD, root App of Apps | ✅ | ✅ 2026-11-10, `https://argocd.dev.domphil.org` (admin IP only), ALB about $0.025/hour |
 | GitOps 5c: team namespaces, RBAC, quotas, Argo CD projects | ✅ | ✅ 2026-11-11, isolation verified |
 | GitOps 5d: team-a sample app (HTTPS, HPA, EFS, rollback) | ✅ | ✅ 2026-11-11, `https://hello.dev.domphil.org`, zero-downtime rollback verified |
-| CI/CD pipeline | ⬜ | ⬜ |
+| CI/CD pipeline (6a–6c) | ✅ | ✅ 2026-11-20, rebuild and teardown verified from workflows; `main` protected |
 | Staging | ⬜ | ⬜ |
 
 Dev is torn down at the end of each working session and rebuilt from code
@@ -92,7 +95,7 @@ eks-platform-as-code/
 | Checkov | 3.3.30 | Milestone 1 | via Docker (below) |
 | kubectl | 1.37 client | Milestone 3 | already installed |
 | Helm | 4.1.4 | Milestone 4b | already installed (Chocolatey) |
-| GitHub CLI | latest | Milestone 6 | `winget install GitHub.cli` |
+| GitHub CLI | 2.103.3 | Milestone 6 | `winget install GitHub.cli`, or the portable zip from GitHub releases (used here) |
 
 **Terraform version choice.** We use **1.16.7**, the latest patch of the
 mature 1.16 line, rather than 1.17.0 (released 2026-10-21). TFLint 0.65.0
@@ -492,6 +495,17 @@ in logs (`sensitive` variables).
 | Runner → private API on 443; CI roles' cluster access (apply: admin, plan: read-only) | `modules/eks`, cluster layer |
 | Shared steps | `.github/actions/terraform-plan`, `.github/actions/setup-kubectl` |
 
+**End-to-end verification (6c, 2026-11-20):**
+
+| Check | Result |
+|---|---|
+| Rebuild dev from a workflow (`deploy-dev`, run 44682079616) | network + cluster 14 min (GitHub runner), platform 56 resources in 4.5 min on the CodeBuild runner (`ip-10-10-45-0`, private subnet); root, teams and team-a-hello `Synced`/`Healthy`; `hello.dev.domphil.org` 200; Argo CD 200 from the admin IP |
+| PR while dev is up (#5) | `plan dev/platform` on the VPC runner with the read-only role; all three layers **No changes** (no drift after the CI build) |
+| PR while dev is down (#4) | network plan 35 to add, cluster and platform reported "skipped" |
+| Teardown from a workflow (`teardown-dev`, run 44865157486) | Argo CD apps, Prometheus volume and Argo CD DNS removed automatically; platform 56, cluster 28, network 35 destroyed (no retry needed); leftover check and a manual sweep found nothing |
+| Secrets in public logs | Admin IP: 0 occurrences in plan and apply logs and PR comments |
+| Found and fixed on the way | Checkov findings (scoped service-linked roles, documented skips); trust policies matched on GitHub's immutable OIDC subject; teardown confirm input removed (CKV_GHA_7); smoke test now waits for every Argo CD app |
+
 ## Cost management
 
 - An **AWS Budget alerts you; it does not cap spending.** Resources keep
@@ -504,8 +518,13 @@ in logs (`sensitive` variables).
 
 ## Security notes
 
-- No AWS keys in GitHub: CI will use GitHub OIDC with short-lived credentials
-  (Milestone 6).
+- No AWS keys in GitHub: CI uses GitHub OIDC with short-lived credentials,
+  trusted only for this repository's immutable OIDC subject; applies need a
+  reviewer's approval in the protected `dev` environment.
+- `main` is protected: changes arrive by pull request, with all CI checks
+  green, linear history, no force-pushes (also for admins).
+- The CI runner in the VPC accepts jobs only from the repository owner's
+  runs, because the repository is public.
 - Never commit `*.tfstate`, `*.tfplan`, or private `*.tfvars`. `.gitignore`
   enforces this.
 - Worker nodes run only in private subnets.
@@ -515,7 +534,12 @@ in logs (`sensitive` variables).
 Reverse of creation: GitOps apps → platform → cluster → network → bootstrap
 (last, and only after migrating its state back to local).
 
-**Current end-of-day teardown (platform + cluster + network; bootstrap stays):**
+**From Milestone 6: run the `teardown-dev` workflow** (Actions → teardown-dev
+→ *Run workflow*, approve twice). It runs the steps below on the CI runners
+and ends with a leftover check. The manual commands remain the fallback,
+for example when CI is unavailable.
+
+**Manual end-of-day teardown (platform + cluster + network; bootstrap stays):**
 
 ```powershell
 # From 5b: remove everything Argo CD deployed first (its finalizer deletes
