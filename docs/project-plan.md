@@ -18,8 +18,8 @@ this repository.
 | 5b | GitOps: Argo CD (chart 10.11.6 / v3.5.6), ALB at `argocd.dev.domphil.org` (admin IP only), root App of Apps | ✅ | ✅ 2026-11-10 (HTTPS, IP limit, self-heal verified; ExternalDNS zone fix) | ALB about $0.025/hour |
 | 5c | GitOps: team namespaces (team-a, team-b), RBAC, quotas, Pod Security, Argo CD projects | ✅ | ✅ 2026-11-11 (RBAC, Pod Security, quota, project boundary, self-heal verified) | None |
 | 5d | GitOps: team-a sample app `hello` (HTTPS, HPA, EFS), rollback by `git revert` | ✅ | ✅ 2026-11-11 (0 errors in 1,048 requests across release + rollback) | Shares the 5b ALB; EFS cents |
-| 6a | CI: OIDC plan/apply roles (bootstrap), GitHub connection, PR checks (fmt, validate, TFLint, Checkov, kubeconform) and plans for network/cluster ([ADR 0003](adr/0003-ci-access.md)) | ✅ | 🔄 roles applied 2026-11-19 | None |
-| 6b | CI: CodeBuild-hosted runner in the VPC, cluster access for CI roles, platform plan, approved deploy/teardown workflows, branch protection | ✅ | 🔄 source credential applied 2026-11-19 | CodeBuild about $0.01/min |
+| 6a | CI: OIDC plan/apply roles (bootstrap), GitHub connection, PR checks (fmt, validate, TFLint, Checkov, kubeconform) and plans for network/cluster ([ADR 0003](adr/0003-ci-access.md)) | ✅ | ✅ 2026-11-20 (PR #2) | None |
+| 6b | CI: CodeBuild-hosted runner in the VPC, cluster access for CI roles, platform plan, approved deploy/teardown workflows, branch protection | ✅ | ✅ 2026-11-20 (PRs #2, #4; `main` protected) | CodeBuild about $0.01/min |
 | 6c | CI: end-to-end test (PR plans, rebuild and teardown from workflows) | ⬜ | ⬜ | Yes (temporary) |
 | 7 | Staging from the same modules | ⬜ | ⬜ | Yes (temporary) |
 | 8 | Run the 16 acceptance tests and record the evidence | ⬜ | ⬜ | Yes (temporary) |

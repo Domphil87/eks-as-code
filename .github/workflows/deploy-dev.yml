@@ -97,12 +97,19 @@ jobs:
         run: |
           aws eks update-kubeconfig --name eks-platform-as-code-dev --region "$AWS_REGION" >/dev/null
           kubectl get nodes -o wide
-          # Argo CD syncs gitops/ from main: wait for the root app and its children.
-          for i in $(seq 1 30); do
-            kubectl -n argocd get applications 2>/dev/null | grep -q "root" && break
+          # Argo CD syncs gitops/ from main. Wait until the root app AND every
+          # child Application in gitops/apps exists (waiting on "--all" too
+          # early would only see root), then until all are Healthy.
+          expected=$(( $(ls gitops/apps/*.yaml | wc -l) + 1 ))
+          for i in $(seq 1 60); do
+            count=$(kubectl -n argocd get applications --no-headers 2>/dev/null | wc -l)
+            [ "$count" -ge "$expected" ] && break
             sleep 10
           done
+          echo "Applications: $count of $expected"
+          [ "$count" -ge "$expected" ] || { echo "::error::Argo CD created $count of $expected Applications"; exit 1; }
           kubectl -n argocd wait applications --all --for=jsonpath='{.status.health.status}'=Healthy --timeout=15m
+          curl -fsS -o /dev/null -w "hello.dev.domphil.org: %{http_code}\n" --retry 10 --retry-delay 15 --retry-all-errors https://hello.dev.domphil.org/
           kubectl -n argocd get applications
           {
             echo "### dev deployed"
