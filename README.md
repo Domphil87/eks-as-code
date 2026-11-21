@@ -5,17 +5,13 @@ Terraform, GitHub Actions, Helm and Argo CD. It replaces a manually configured
 cluster with code: infrastructure is provisioned in layers, platform add-ons
 are pinned Helm releases, and application teams deploy through Git (GitOps).
 
-> **Status: Milestone 4 complete (2026-11-09).** All platform add-ons are
-> deployed in dev: storage, metrics-server, ingress/DNS/TLS, secrets,
-> monitoring, logging and Cluster Autoscaler. Acceptance tests #8, #9, #10
-> and #12 pass. **Milestone 5 (GitOps) complete (2026-11-11):** code on
-> GitHub (5a), Argo CD (5b), team namespaces with guardrails (5c) and a
-> team-a sample app at `https://hello.dev.domphil.org` with HPA, EFS and
-> zero-downtime rollback by `git revert` (5d). **Milestone 6 (CI/CD)
-> complete (2026-11-20):** GitHub Actions with OIDC, PR checks and plans,
-> a CodeBuild runner in the VPC, and approved `deploy-dev` / `teardown-dev`
-> workflows, verified end to end. Next: staging (Milestone 7).
-> See [docs/project-plan.md](docs/project-plan.md) for progress.
+> **Status: Milestones 1–6 complete (2026-11-20).** Dev runs the full
+> platform (storage, ingress/DNS/TLS, secrets, monitoring, logging,
+> Cluster Autoscaler), GitOps with Argo CD, team namespaces with
+> guardrails, and a sample app with zero-downtime rollback. GitHub Actions
+> checks every pull request and builds or tears down dev with approved
+> workflows. Acceptance tests #8, #9, #10 and #12 pass. Next: staging
+> (Milestone 7). See [docs/project-plan.md](docs/project-plan.md).
 
 ## Deployment status
 
@@ -44,7 +40,7 @@ Dev is torn down at the end of each working session and rebuilt from code
 ```text
                     GitHub (Domphil87/eks-as-code)
           PR: fmt / validate / TFLint / Checkov / plan
-          merge: apply (OIDC, no stored AWS keys)
+          deploy/teardown: approved workflows (OIDC, no stored AWS keys)
                          │                     ▲ Argo CD pulls
                          ▼                     │ app manifests
 ┌──────────────────────── AWS account ─────────┼────────────────────┐
@@ -70,12 +66,12 @@ Terraform state is split into three layers per environment:
 ```text
 eks-platform-as-code/
 ├── bootstrap/            # ✅ One-time: state bucket and budget (local state at first)
-├── modules/              # Reusable modules: network ✅, eks ✅, addons ✅, gitops ✅
+├── modules/              # Reusable modules: network ✅, eks ✅, addons ✅, gitops ✅, ci-runner ✅
 ├── envs/                 # Root configs per environment and layer
 │   ├── dev/{network,cluster,platform}/   ✅
 │   └── staging/{network,cluster,platform}/   ⬜
 ├── gitops/               # Deployed by Argo CD: apps/ ✅ (5b), teams/ ✅ (5c), workloads/ ✅ (5d)
-├── .github/workflows/    # ⬜ CI/CD
+├── .github/              # ✅ CI/CD: workflows/ (terraform-ci, deploy-dev, teardown-dev), actions/
 ├── docs/
 │   ├── project-plan.md   # ✅ Milestones and decisions
 │   └── adr/              # ✅ Architecture Decision Records
@@ -101,7 +97,7 @@ eks-platform-as-code/
 mature 1.16 line, rather than 1.17.0 (released 2026-10-21). TFLint 0.65.0
 officially supports Terraform up to 1.16. The Chocolatey pin
 (`choco pin add -n terraform --version 1.16.7`) stops `choco upgrade all`
-from silently moving to 1.17. CI will use the same version (Milestone 6).
+from silently moving to 1.17. CI uses the same version (`TF_VERSION` in the workflows).
 To upgrade later, remove the pin with `choco pin remove -n terraform`, then
 upgrade on your laptop and in CI together.
 
@@ -165,7 +161,7 @@ Your IP allow-list lives in the git-ignored `envs/dev/cluster/admin-access.auto.
 | Kubernetes | 1.36 (standard support until 2027-08-01), `upgrade_policy = STANDARD` |
 | API endpoint | Private + public, restricted to your IP /32 |
 | Auth | EKS access entries (API mode); your IAM user is cluster-admin |
-| Nodes | Managed node group, 3 × Spot (t3a/t3/m5a/m6i/m5 `.large`), min 3, max 6, AL2023 |
+| Nodes | Managed node group, 3 × Spot (9 types of 2 vCPU / 8 GiB: t3a, t3, m5a, m5, m6i, m6a, m7i, m7a, m7i-flex `.large`), min 3, max 6, AL2023 |
 | Add-ons | vpc-cni, kube-proxy, eks-pod-identity-agent, coredns (pinned) |
 | Storage | EFS file system + 3 mount targets (CSI driver installed in Milestone 4a) |
 
@@ -570,7 +566,7 @@ terraform plan -destroy -out=destroy.tfplan   # review: only cluster resources
 terraform apply destroy.tfplan                # about 10 minutes
 
 cd ..\network
-terraform plan -destroy -out=destroy.tfplan   # review: 26 to destroy
+terraform plan -destroy -out=destroy.tfplan   # review: 35 to destroy (26 network + 9 CI runner)
 terraform apply destroy.tfplan
 ```
 
@@ -582,4 +578,8 @@ first, or the VPC destroy will fail on leftover ENIs and security groups.
 
 - [Project plan](docs/project-plan.md)
 - [ADR 0001: layered Terraform state](docs/adr/0001-layered-terraform-state.md)
+- [ADR 0002: what Terraform owns and what Argo CD owns](docs/adr/0002-terraform-vs-argocd.md)
+- [ADR 0003: how CI reaches AWS and the cluster](docs/adr/0003-ci-access.md)
 - [Bootstrap guide](bootstrap/README.md)
+- Module guides: [network](modules/network/README.md), [eks](modules/eks/README.md), [addons](modules/addons/README.md), [gitops](modules/gitops/README.md), [ci-runner](modules/ci-runner/README.md)
+- [GitOps guide](gitops/README.md)
