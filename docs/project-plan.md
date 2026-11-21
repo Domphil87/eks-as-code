@@ -20,7 +20,7 @@ this repository.
 | 5d | GitOps: team-a sample app `hello` (HTTPS, HPA, EFS), rollback by `git revert` | ✅ | ✅ 2026-11-11 (0 errors in 1,048 requests across release + rollback) | Shares the 5b ALB; EFS cents |
 | 6a | CI: OIDC plan/apply roles (bootstrap), GitHub connection, PR checks (fmt, validate, TFLint, Checkov, kubeconform) and plans for network/cluster ([ADR 0003](adr/0003-ci-access.md)) | ✅ | ✅ 2026-11-20 (PR #2) | None |
 | 6b | CI: CodeBuild-hosted runner in the VPC, cluster access for CI roles, platform plan, approved deploy/teardown workflows, branch protection | ✅ | ✅ 2026-11-20 (PRs #2, #4; `main` protected) | CodeBuild about $0.01/min |
-| 6c | CI: end-to-end test (PR plans, rebuild and teardown from workflows) | ⬜ | ⬜ | Yes (temporary) |
+| 6c | CI: end-to-end test (PR plans, rebuild and teardown from workflows) | ✅ | ✅ 2026-11-20 (deploy 14 + 4.5 min, no drift, clean teardown) | About $0.30 for the test |
 | 7 | Staging from the same modules | ⬜ | ⬜ | Yes (temporary) |
 | 8 | Run the 16 acceptance tests and record the evidence | ⬜ | ⬜ | Yes (temporary) |
 | 9 | Ordered teardown and leftover-resource checks | ⬜ | ⬜ | Reduces cost |
@@ -111,7 +111,7 @@ left; apex unchanged. Bootstrap kept.
   `cluster_autoscaler_version` together.
 - **Team access from IAM.** The `team-a-developers` / `team-b-developers` groups (5c) are not mapped to IAM principals yet; add EKS access entries (cluster layer) with `kubernetes_groups` when real team roles exist.
 - **Shared ALB governance.** Any team Ingress can join the IngressGroup `eks-platform-as-code-dev`; a conflicting group-wide setting (`inbound-cidrs`, `ssl-policy`, `scheme`, `ssl-redirect`) stops the controller for every Ingress in the group, Argo CD included (seen in 5d). Before more teams onboard: an `IngressClassParams` that fixes the group and these settings, or a Kyverno/ValidatingAdmissionPolicy check.
-- Install the GitHub CLI before Milestone 6 (Helm 4.1.4 is installed); in progress (6a).
+- ~~Install the GitHub CLI~~: portable 2.103.3 in `%LOCALAPPDATA%/Programs/gh-cli` (winget hung on a hidden UAC prompt).
 - ~~CI runners are not in the cluster endpoint allow-list~~: decided in [ADR 0003](adr/0003-ci-access.md) (CodeBuild runner in the VPC, 6b).
 - ~~Activate the `Project` cost allocation tag~~: activated 2026-11-19 (costs are tagged from then on, not retroactively).
 - Tighten the pre-existing `github-action-role` trust policy (outside this project).
